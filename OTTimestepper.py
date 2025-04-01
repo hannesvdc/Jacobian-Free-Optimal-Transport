@@ -6,20 +6,24 @@ import scipy.optimize as opt
 from OTFramework import *
 
 def eulerOTTimestepper(X, h, mu, sigma, rng):
-    N = X.size
-    Xnew = X + mu(X) * h +  np.sqrt(2.0 * h) * sigma(X) * rng.normal(0.0, 1.0, size=(N,1))
-    return find_ot_assignment(X, Xnew)
+    Xnew = X + mu(X) * h +  np.sqrt(2.0 * h) * sigma(X) * rng.normal(0.0, 1.0, size=X.shape)
+    Xnew.sort(axis=0)
+    return Xnew #find_ot_assignment(X, Xnew)
 
-def eulerOTpsi(X, h, mu, sigma, rng):
-    return X - eulerOTTimestepper(X, h, mu, sigma, rng)
+def eulerOTpsi(X0, Ntrials, h, Tpsi, mu, sigma, rng):
+    X = X0[:,np.newaxis] * np.ones((X0.size, Ntrials))
+    for n in range(int(Tpsi/h)):
+        X = eulerOTTimestepper(X, h, mu, sigma, rng)
+
+    return np.average(X0[:,np.newaxis] - X, axis=1)
 
 def OUTimeEvolution():
     # Simple Ornstein-Uhlenbeck example
-    N = 1000
+    N = 1000000
     mean = 2.0
     stdev = 2.0
     rng = rd.RandomState()
-    X = rng.normal(mean, stdev, size=(N,1))
+    X = rng.normal(mean, stdev, N)
 
     # define drift and diffusion
     mu = lambda x: -x
@@ -41,7 +45,7 @@ def OUTimeEvolution():
         stdevs[n+1] = np.std(X)
 
     # Plot the simulation results
-    plt.hist(X[:,0], bins=int(np.sqrt(N)), density=True)
+    plt.hist(X, bins=int(np.sqrt(N)), density=True)
     plt.xlabel(r'$x$')
     plt.title('Steady-state Time-Evolution')
 
@@ -55,19 +59,22 @@ def OUTimeEvolution():
 
 def OUSteadyState():
     # Sample the (random?) initial condtion
-    N = 1000
-    mean = 2.0
-    stdev = 2.0
+    N = 10000
+    N_trials = 100
+    mean = 1.0
+    stdev = 1.0
     rng = rd.RandomState()
-    X0 = np.sort(rng.normal(mean, stdev, N))
+    X0 = np.sort(rng.normal(mean, stdev, size=N))
 
     # define drift and diffusion
     mu = lambda x: -x
     sigma = lambda x: 1.0
     h = 0.01
+    Tpsi = 1.0
 
     # Define Newton-Krylov parameters
-    f = lambda x: eulerOTpsi(np.reshape(x, (N,1)), h, mu, sigma, rng)[:,0]
+    print('Starting Newton-Krylov...')
+    f = lambda x: eulerOTpsi(x, N_trials, h, Tpsi, mu, sigma, rng)
     try:
         X_ss = opt.newton_krylov(f, X0, verbose=True, maxiter=100)
     except opt.NoConvergence as e:
@@ -82,4 +89,4 @@ def OUSteadyState():
     plt.show()
 
 if __name__ == '__main__':
-    OUTimeEvolution()
+    OUSteadyState()
