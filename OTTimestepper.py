@@ -7,15 +7,14 @@ from OTFramework import *
 
 def eulerOTTimestepper(X, h, mu, sigma, rng):
     Xnew = X + mu(X) * h +  np.sqrt(2.0 * h) * sigma(X) * rng.normal(0.0, 1.0, size=X.shape)
-    Xnew.sort(axis=0)
-    return Xnew #find_ot_assignment(X, Xnew)
+    return np.sort(Xnew)
 
-def eulerOTpsi(X0, Ntrials, h, Tpsi, mu, sigma, rng):
-    X = X0[:,np.newaxis] * np.ones((X0.size, Ntrials))
-    for n in range(int(Tpsi/h)):
+def eulerOTpsi(X0, h, Tpsi, mu, sigma, rng):
+    X = np.copy(X0)
+    for _ in range(int(Tpsi/h)):
         X = eulerOTTimestepper(X, h, mu, sigma, rng)
 
-    return np.average(X0[:,np.newaxis] - X, axis=1)
+    return X0 - X
 
 def OUTimeEvolution():
     # Simple Ornstein-Uhlenbeck example
@@ -59,8 +58,7 @@ def OUTimeEvolution():
 
 def OUSteadyState():
     # Sample the (random?) initial condtion
-    N = 10000
-    N_trials = 100
+    N = 1000000
     mean = 1.0
     stdev = 1.0
     rng = rd.RandomState()
@@ -70,13 +68,14 @@ def OUSteadyState():
     mu = lambda x: -x
     sigma = lambda x: 1.0
     h = 0.01
-    Tpsi = 1.0
+    Tpsi = 0.1
+    rdiff = 10000
 
     # Define Newton-Krylov parameters
     print('Starting Newton-Krylov...')
-    f = lambda x: eulerOTpsi(x, N_trials, h, Tpsi, mu, sigma, rng)
+    f = lambda x: eulerOTpsi(x, h, Tpsi, mu, sigma, rng)
     try:
-        X_ss = opt.newton_krylov(f, X0, verbose=True, maxiter=100)
+        X_ss = opt.newton_krylov(f, X0, verbose=True, rdiff=rdiff, maxiter=100, line_search=None, method='gmres')
     except opt.NoConvergence as e:
         X_ss = e.args[0]
 
