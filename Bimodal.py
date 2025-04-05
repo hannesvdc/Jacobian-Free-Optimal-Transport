@@ -40,5 +40,31 @@ def timeEvolution():
     plt.xlabel(r'$x$')
     plt.title('Steady-state Time-Evolution')
 
+def OUSteadyState():
+    N = 1000000
+    mean = 1.0
+    stdev = 1.0
+    rng = rd.RandomState()
+    X0 = np.sort(rng.normal(mean, stdev, size=N))
+
+    # define drift and diffusion
+    h = 0.001
+    Tpsi = 0.1
+    rdiff = 10000
+
+    # Define Newton-Krylov parameters
+    print('Starting Newton-Krylov...')
+    f = lambda x: EMOTpsi(x, h, Tpsi, mu, sigma, rng)
+    try:
+        X_ss = opt.newton_krylov(f, X0, verbose=True, rdiff=rdiff, maxiter=100, line_search=None, method='gmres')
+    except opt.NoConvergence as e:
+        X_ss = e.args[0]
+
+    # Plot the steady-state histogran
+    plt.hist(X_ss, bins=int(np.sqrt(N)), density=True)
+    plt.xlabel(r'$x$')
+    plt.title('Steady-state Distribution Newton-Krylov')
+    plt.show()
+
 if __name__ == '__main__':
     timeEvolution()
