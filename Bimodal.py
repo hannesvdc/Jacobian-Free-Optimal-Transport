@@ -39,6 +39,7 @@ def timeEvolution():
     plt.hist(X, bins=int(np.sqrt(N)), density=True)
     plt.xlabel(r'$x$')
     plt.title('Steady-state Time-Evolution')
+    plt.show()
 
 def OUSteadyState():
     N = 1000000
