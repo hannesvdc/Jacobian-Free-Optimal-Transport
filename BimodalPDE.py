@@ -3,7 +3,7 @@ import scipy.sparse.linalg as slg
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
-N = 1001
+N = 1000
 left = -5.0
 right = 5.0
 x_array = np.linspace(left, right, N)
