@@ -149,7 +149,7 @@ def arnoldi():
     plt.title('Fokker-Planck Eigenvalues')
     plt.legend()
     plt.grid()
-    plt.axis('equal')  # Ensure the aspect ratio is equal
+    plt.axis('equal')
     plt.show()
 
 def parseArguments():
@@ -160,7 +160,7 @@ def parseArguments():
         type=str,
         required=True,
         dest='experiment',
-        help="Specify the experiment to run (e.g., 'timeEvolution')."
+        help="Specify the experiment to run (e.g., 'timeEvolution', 'steady-state', 'arnoldi')."
     )
     args = parser.parse_args()
     return args
@@ -174,4 +174,4 @@ if __name__ == '__main__':
     elif args.experiment == 'arnoldi':
         arnoldi()
     else:
-        print('This experiment is not supported. Choose either \'evolution\', \'steady-state\' or \'arnoldi\'.')
+        print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
