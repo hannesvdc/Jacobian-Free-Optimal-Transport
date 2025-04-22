@@ -36,9 +36,14 @@ def timeEvolution():
         X = EMOTTimestepper(X, h, mu, sigma, rng)
 
     # Plot the simulation results
-    plt.hist(X, bins=int(np.sqrt(N)), density=True)
+    x_array = np.linspace(-3, 3, 1001)
+    V_array = V(x_array)
+    dist = np.exp(-V_array)
+    dist = dist / np.trapz(dist, x_array)
+    plt.hist(X, bins=int(np.sqrt(N)), density=True, label='Euler Maruyama + OT')
+    plt.plot(x_array, dist, label='Bimodal Distribution')
     plt.xlabel(r'$x$')
-    plt.title('Steady-state Time-Evolution')
+    plt.title('EMOT Time Evolution')
     plt.show()
 
 def steadyState():
@@ -51,18 +56,25 @@ def steadyState():
     # define drift and diffusion
     h = 0.001
     Tpsi = 0.1
-    rdiff = 1000
+    rdiff = 100000
 
     # Define Newton-Krylov parameters
     print('Starting Newton-Krylov...')
     f = lambda x: EMOTpsi(x, h, Tpsi, mu, sigma, rng)
     try:
-        X_ss = opt.newton_krylov(f, X0, verbose=True, rdiff=rdiff, maxiter=20, line_search=None, method='gmres')
+        X_ss = opt.newton_krylov(f, X0, verbose=True, rdiff=rdiff, maxiter=10, line_search=None, method='gmres')
     except opt.NoConvergence as e:
         X_ss = e.args[0]
+    except ValueError as e:
+        pass
 
     # Plot the steady-state histogran
+    x_array = np.linspace(-3, 3, 1001)
+    V_array = V(x_array)
+    dist = np.exp(-V_array)
+    dist = dist / np.trapz(dist, x_array)
     plt.hist(X_ss, bins=int(np.sqrt(N)), density=True)
+    plt.plot(x_array, dist, label='Bimodal Distribution')
     plt.xlabel(r'$x$')
     plt.title('Steady-state Distribution Newton-Krylov')
     plt.show()
