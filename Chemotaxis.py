@@ -1,4 +1,6 @@
 import numpy as np
+import scipy.sparse.linalg as slg
+import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 D = 0.1
@@ -28,18 +30,24 @@ def step(mu, S, chi, dt):
     # Explicit Euler step
     mu[1:-1] += dt * dflux_dx[1:-1]
 
-    # Dirichlet boundary conditions and normalize to a density
-    mu[0] = mu[-1] = 0
+    # Homogeneous Neumann boundary conditions and normalize to a density
+    mu[0] = mu[1]
+    mu[-1] = mu[-2]
     mu = np.maximum(mu, 0)
     mu = mu / np.trapz(mu, x_array)
 
     return mu
 
-def timestepper(mu, S, chi, dt, T):
+def timestepper(mu, S, chi, dt, T, verbose=False):
     n_steps = int(T / dt)
     for n in range(n_steps):
+        if verbose and n % 1000 == 0:
+            print('t =', n * dt)
         mu = step(mu, S, chi, dt)
     return mu
+
+def psi(mu0, S, chi, dt, T):
+    return mu0 - timestepper(mu0, S, chi, dt, T)
 
 def timeEvolution():
     # Physical functions defining the problem
@@ -52,11 +60,11 @@ def timeEvolution():
 
     # Do timestepping
     dt = 1.e-3
-    T = 10.0
+    T = 500.0
     mu_inf = timestepper(mu0, S, chi, dt, T)
 
     # Analytic Steady-State for the given chi(S)
-    dist = np.exp( (S(x_array) + S^3(x_array) / 6.0) / D)
+    dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
     Z = np.trapz(dist, x_array)
     dist = dist / Z
 
@@ -69,6 +77,39 @@ def timeEvolution():
     plt.grid(True)
     plt.legend()
     plt.show()
+
+def steadyState(_return=False):
+    # Physical functions defining the problem
+    S = lambda x: np.tanh(x)
+    chi = lambda s: 1 + 0.5 * s**2  
+
+    # Initial condition
+    mu0 = np.exp(-x_array**2 / 0.5**2)
+    mu0 = mu0 / np.trapz(mu0, x_array) 
+
+    # Do Newton-Krylov
+    dt = 1.e-3
+    T_psi = 1.0
+    F = lambda mu: psi(mu, S, chi, dt, T_psi)
+    mu_ss = opt.newton_krylov(F, mu0, f_tol=1.e-12, verbose=True)
+    if _return:
+        return mu_ss
+    
+    # Analytic Steady-State for the given chi(S)
+    dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
+    Z = np.trapz(dist, x_array)
+    dist = dist / Z
+
+    # Plot final distribution
+    plt.plot(x_array, mu_ss, label='Newton-Krylov')
+    plt.plot(x_array, dist, label='Analytic Steady State')
+    plt.xlabel('x')
+    plt.ylabel(r'$\mu(x)$')
+    plt.title('1D Drift-Diffusion with Chemotactic Drift')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
 
 def parseArguments():
     import argparse
@@ -87,5 +128,7 @@ if __name__ == '__main__':
     args = parseArguments()
     if args.experiment == 'evolution':
         timeEvolution()
+    elif args.experiment == 'steady-state':
+        steadyState()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
