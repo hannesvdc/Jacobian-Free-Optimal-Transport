@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.linalg as lg
 import scipy.sparse.linalg as slg
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
@@ -61,7 +62,7 @@ def timeEvolution():
     # Do timestepping
     dt = 1.e-3
     T = 500.0
-    mu_inf = timestepper(mu0, S, chi, dt, T)
+    mu_inf = timestepper(mu0, S, chi, dt, T, verbose=True)
 
     # Analytic Steady-State for the given chi(S)
     dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
@@ -70,7 +71,7 @@ def timeEvolution():
 
     # Plot final distribution
     plt.plot(x_array, mu_inf, label='Time Evolution')
-    plt.plot(x_array, dist, label='Analytic Steady State')
+    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.title('1D Drift-Diffusion with Chemotactic Drift')
@@ -102,7 +103,7 @@ def steadyState(_return=False):
 
     # Plot final distribution
     plt.plot(x_array, mu_ss, label='Newton-Krylov')
-    plt.plot(x_array, dist, label='Analytic Steady State')
+    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.title('1D Drift-Diffusion with Chemotactic Drift')
@@ -127,17 +128,23 @@ def arnoldi():
         Compute the matrix-vector product Dpsi * v using finite differences.
         """
         return (psi(mu_ss + epsilon * v, S, chi, dt, T_psi) - psi(mu_ss, S, chi, dt, T_psi)) / epsilon
-    n = len(mu_ss)
-    Dpsi = slg.LinearOperator((n, n), matvec=Dpsi_v, dtype=np.float64)
+    Dpsi = slg.LinearOperator((N, N), matvec=Dpsi_v, dtype=np.float64)
 
-    # Compute the leading eigenvalues using eigs
+    # Compute the leading eigenvalues using Arnoldi
     k = 10
     print('\nComputing Eigenvalues...')
     eigenvalues, _ = slg.eigs(Dpsi, k=k, which='SM', return_eigenvectors=True)
     eigenvalues = 1.0 - eigenvalues # Mapping from psi to timestepper
 
+    # Compute the eigenvalues using the QR method
+    dpsi_mat = np.zeros((N,N))
+    for n in range(N):
+        dpsi_mat[:,n] = Dpsi_v(np.eye(N)[:,n])
+    eigenvalues_qr = np.flip(np.sort(1.0 - lg.eigvals(dpsi_mat)))[0:10]
+
     # Plot in the complex plane
-    plt.scatter(eigenvalues.real, eigenvalues.imag, color='blue', marker='x', label='Eigenvalues')
+    plt.scatter(eigenvalues.real, eigenvalues.imag, color='blue', marker='o', label='Eigenvalues Arnoldi')
+    plt.scatter(eigenvalues_qr.real, eigenvalues_qr.imag, color='tab:orange', marker='x', label='Eigenvalues QR')
     theta = np.linspace(0, 2 * np.pi, 500)
     unit_circle = np.exp(1j * theta)
     plt.plot(unit_circle.real, unit_circle.imag, color='red', linestyle='--')
