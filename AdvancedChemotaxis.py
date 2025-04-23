@@ -60,8 +60,11 @@ def timestepper(B, dt, T, verbose=False):
         B = step(B, dt)
     return B
 
-def timeEvolution():
-    # --- Initial condition for B(x, 0) ---
+def psi(B0, dt, T):
+    return B0 - timestepper(B0, dt, T)
+
+def timeEvolution(_return=False):
+    # Initial condition for B(x, 0)
     B0 = np.exp(-x_array**2 / (2 * 100**2))
     B0 /= np.trapz(B0, x_array)
 
@@ -69,12 +72,40 @@ def timeEvolution():
     dt = 1.e-3
     T = 1000
     B_inf = timestepper(B0, dt, T, verbose=True)
+    if _return:
+        return B_inf
 
     plt.plot(x_array, B_inf, label='Final B(x)')
     plt.plot(x_array, B0, label='B0(x)')
     plt.xlabel('x')
     plt.ylabel('B(x)')
     plt.title('Chemotaxis Model')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+def steadyState(_return=False):
+    # Initial condition for B(x, 0)
+    B0 = np.exp(-x_array**2 / (2 * 100**2))
+    B0 /= np.trapz(B0, x_array)
+
+    # Do Newton-Krylov
+    dt = 1.e-3
+    T_psi = 1
+    F = lambda mu: psi(mu, dt, T_psi)
+    B_ss = opt.newton_krylov(F, B0, verbose=True)
+    if _return:
+        return B_ss
+    
+    # Do timestepping for reference
+    B_inf = timeEvolution(_return=True)
+
+    # Plot final distribution
+    plt.plot(x_array, B_ss, label='Newton-Krylov')
+    plt.plot(x_array, B_inf, linestyle='--', label='Time Evolution')
+    plt.xlabel('x')
+    plt.ylabel(r'$\mu(x)$')
+    plt.title('1D Drift-Diffusion with Chemotactic Drift')
     plt.grid(True)
     plt.legend()
     plt.show()
@@ -97,7 +128,7 @@ if __name__ == '__main__':
     if args.experiment == 'evolution':
         timeEvolution()
     elif args.experiment == 'steady-state':
-        pass
+        steadyState()
     elif args.experiment == 'arnoldi':
         pass
     else:
