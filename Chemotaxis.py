@@ -31,7 +31,7 @@ def step(mu, S, chi, dt):
     # Dirichlet boundary conditions and normalize to a density
     mu[0] = mu[-1] = 0
     mu = np.maximum(mu, 0)
-    mu = mu / np.trapz(mu, x)
+    mu = mu / np.trapz(mu, x_array)
 
     return mu
 
