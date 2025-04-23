@@ -91,7 +91,7 @@ def steadyState(_return=False):
 
     # Do Newton-Krylov
     dt = 1.e-3
-    T_psi = 1
+    T_psi = 1.0
     F = lambda mu: psi(mu, dt, T_psi)
     B_ss = opt.newton_krylov(F, B0, verbose=True)
     if _return:
@@ -108,6 +108,50 @@ def steadyState(_return=False):
     plt.title('1D Drift-Diffusion with Chemotactic Drift')
     plt.grid(True)
     plt.legend()
+    plt.show()
+
+def arnoldi():
+    B_ss = steadyState(_return=True)
+
+    # Setup the Jacobian matrix
+    dt = 1.e-3
+    T_psi = 1.0
+    epsilon = 1.e-8
+    def Dpsi_v(v):
+        """
+        Compute the matrix-vector product Dpsi * v using finite differences.
+        """
+        return (psi(B_ss + epsilon * v, dt, T_psi) - psi(B_ss, dt, T_psi)) / epsilon
+    Dpsi = slg.LinearOperator((N, N), matvec=Dpsi_v, dtype=np.float64)
+
+    # Compute the leading eigenvalues using Arnoldi
+    k = 10
+    print('\nComputing Eigenvalues...')
+    eigenvalues, _ = slg.eigs(Dpsi, k=k, which='SM', return_eigenvectors=True)
+    eigenvalues = 1.0 - eigenvalues # Mapping from psi to timestepper
+
+    # Compute the eigenvalues using the QR method
+    dpsi_mat = np.zeros((N,N))
+    for n in range(N):
+        dpsi_mat[:,n] = Dpsi_v(np.eye(N)[:,n])
+    eigenvalues_qr = np.flip(np.sort(1.0 - lg.eigvals(dpsi_mat)))[0:10]
+
+    # Plot in the complex plane
+    plt.scatter(eigenvalues.real, eigenvalues.imag, color='blue', marker='o', label='Eigenvalues Arnoldi')
+    plt.scatter(eigenvalues_qr.real, eigenvalues_qr.imag, color='tab:orange', marker='x', label='Eigenvalues QR')
+    theta = np.linspace(0, 2 * np.pi, 500)
+    unit_circle = np.exp(1j * theta)
+    plt.plot(unit_circle.real, unit_circle.imag, color='red', linestyle='--')
+
+    # Add labels and grid
+    plt.axhline(0, color='black', linewidth=0.5, linestyle='--')
+    plt.axvline(0, color='black', linewidth=0.5, linestyle='--')
+    plt.xlabel('Real Part')
+    plt.ylabel('Imaginary Part')
+    plt.title('1D Drift-Diffusion with Chemotactic Drift')
+    plt.legend()
+    plt.grid()
+    plt.axis('equal')
     plt.show()
 
 def parseArguments():
@@ -130,6 +174,6 @@ if __name__ == '__main__':
     elif args.experiment == 'steady-state':
         steadyState()
     elif args.experiment == 'arnoldi':
-        pass
+        arnoldi()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
