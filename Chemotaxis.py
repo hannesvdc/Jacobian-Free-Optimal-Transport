@@ -110,6 +110,48 @@ def steadyState(_return=False):
     plt.legend()
     plt.show()
 
+def arnoldi():
+    # Physical functions defining the problem
+    S = lambda x: np.tanh(x)
+    chi = lambda s: 1 + 0.5 * s**2  
+
+    # Initial condition
+    mu_ss = steadyState(_return=True)
+
+    # Setup the Jacobian matrix
+    dt = 1.e-3
+    T_psi = 1.0
+    epsilon = 1.e-8
+    def Dpsi_v(v):
+        """
+        Compute the matrix-vector product Dpsi * v using finite differences.
+        """
+        return (psi(mu_ss + epsilon * v, S, chi, dt, T_psi) - psi(mu_ss, S, chi, dt, T_psi)) / epsilon
+    n = len(mu_ss)
+    Dpsi = slg.LinearOperator((n, n), matvec=Dpsi_v, dtype=np.float64)
+
+    # Compute the leading eigenvalues using eigs
+    k = 10
+    print('\nComputing Eigenvalues...')
+    eigenvalues, _ = slg.eigs(Dpsi, k=k, which='SM', return_eigenvectors=True)
+    eigenvalues = 1.0 - eigenvalues # Mapping from psi to timestepper
+
+    # Plot in the complex plane
+    plt.scatter(eigenvalues.real, eigenvalues.imag, color='blue', marker='x', label='Eigenvalues')
+    theta = np.linspace(0, 2 * np.pi, 500)
+    unit_circle = np.exp(1j * theta)
+    plt.plot(unit_circle.real, unit_circle.imag, color='red', linestyle='--')
+
+    # Add labels and grid
+    plt.axhline(0, color='black', linewidth=0.5, linestyle='--')
+    plt.axvline(0, color='black', linewidth=0.5, linestyle='--')
+    plt.xlabel('Real Part')
+    plt.ylabel('Imaginary Part')
+    plt.title('1D Drift-Diffusion with Chemotactic Drift')
+    plt.legend()
+    plt.grid()
+    plt.axis('equal')
+    plt.show()
 
 def parseArguments():
     import argparse
@@ -130,5 +172,7 @@ if __name__ == '__main__':
         timeEvolution()
     elif args.experiment == 'steady-state':
         steadyState()
+    elif args.experiment == 'arnoldi':
+        arnoldi()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
