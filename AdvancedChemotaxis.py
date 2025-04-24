@@ -105,7 +105,7 @@ def steadyState(_return=False):
     plt.plot(x_array, B_inf, linestyle='--', label='Time Evolution')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
-    plt.title('1D Drift-Diffusion with Chemotactic Drift')
+    plt.title('1D Drift-Diffusion with Advanced Chemotactic Drift')
     plt.grid(True)
     plt.legend()
     plt.show()
@@ -121,20 +121,20 @@ def arnoldi():
         """
         Compute the matrix-vector product Dpsi * v using finite differences.
         """
-        return (psi(B_ss + epsilon * v, dt, T_psi) - psi(B_ss, dt, T_psi)) / epsilon
+        return (timestepper(B_ss + epsilon * v, dt, T_psi) - timestepper(B_ss, dt, T_psi)) / epsilon
     Dpsi = slg.LinearOperator((N, N), matvec=Dpsi_v, dtype=np.float64)
 
     # Compute the leading eigenvalues using Arnoldi
     k = 10
     print('\nComputing Eigenvalues...')
-    eigenvalues, _ = slg.eigs(Dpsi, k=k, which='SM', return_eigenvectors=True)
-    eigenvalues = 1.0 - eigenvalues # Mapping from psi to timestepper
+    eigenvalues, _ = slg.eigs(Dpsi, k=k, which='LM', return_eigenvectors=True)
+    #eigenvalues = 1.0 - eigenvalues # Mapping from psi to timestepper
 
     # Compute the eigenvalues using the QR method
     dpsi_mat = np.zeros((N,N))
     for n in range(N):
         dpsi_mat[:,n] = Dpsi_v(np.eye(N)[:,n])
-    eigenvalues_qr = np.flip(np.sort(1.0 - lg.eigvals(dpsi_mat)))[0:10]
+    eigenvalues_qr = np.flip(np.sort(lg.eigvals(dpsi_mat)))[0:k]
 
     # Plot in the complex plane
     plt.scatter(eigenvalues.real, eigenvalues.imag, color='blue', marker='o', label='Eigenvalues Arnoldi')
@@ -148,7 +148,7 @@ def arnoldi():
     plt.axvline(0, color='black', linewidth=0.5, linestyle='--')
     plt.xlabel('Real Part')
     plt.ylabel('Imaginary Part')
-    plt.title('1D Drift-Diffusion with Chemotactic Drift')
+    plt.title('1D Drift-Diffusion with Advanced Chemotactic Drift')
     plt.legend()
     plt.grid()
     plt.axis('equal')
