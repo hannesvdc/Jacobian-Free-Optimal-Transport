@@ -146,18 +146,19 @@ def noiseSteadyState():
         T_psi = 0.1
         F = lambda p: psi(p, mu, sigma, dt, T_psi, eps=eps)
         try:
-            p_ss = opt.newton_krylov(F, p0, f_tol=1.e-14, maxiter=50, verbose=True)
+            p_ss = opt.newton_krylov(F, p0, f_tol=1.e-14, maxiter=20, verbose=True)
         except opt.NoConvergence as e:
             p_ss = e.args[0]
-        p_ss[p_ss <= 0.0] = 1.e-5
+        p_ss[p_ss <= 0.0] = 1.e-10
         p_ss /= np.trapz(p_ss, x_array)
 
         # Compute the KL Divergence between p_ss and dist
         kl_div = np.trapz(p_ss * np.log(p_ss / dist_vals), x_array)
         errors.append(kl_div)
+        print('KL Divergence:', kl_div)
 
         # Plot
-        plt.plot(x_array, p_ss, label=f"Noise Level {eps}")
+        plt.plot(x_array, p_ss, label=rf"$\varepsilon = {eps}$")
 
     # Plot the solution
     plt.xlabel(r'$x$')
@@ -165,7 +166,7 @@ def noiseSteadyState():
     plt.legend()
 
     plt.figure()
-    plt.loglog(eps_list, errors)
+    plt.loglog(np.flip(np.array(eps_list)), np.flip(np.array(errors)))
     plt.xlabel(r'$\varepsilon$')
     plt.ylabel('KLD')
     plt.title(r'Kullback-Leibler Divergence versus Noise Level $\varepsilon$')
