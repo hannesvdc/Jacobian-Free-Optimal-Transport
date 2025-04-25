@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.random as rd
 import scipy.sparse.linalg as slg
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
@@ -9,7 +10,9 @@ right = 5.0
 x_array = np.linspace(left, right, N)
 dx = (right - left) / (N - 1)
 
-def step(p, mu, sigma, dt):
+rng = rd.RandomState()
+
+def step(p, mu, sigma, dt, eps=None):
     mu_vals = mu(x_array)
     sigma_vals = sigma(x_array)
 
@@ -39,21 +42,27 @@ def step(p, mu, sigma, dt):
     p = p + dt * dpdt
     p[0] = p[-1] = 0  # Dirichlet BCs
 
+    # Add noise when eps != None
+    if eps is not None:
+        noise = np.sqrt(dt) * eps * rng.normal(0.0, scale=1.0, size=p.size)
+        noise -= np.mean(noise)
+        p = p + p * noise # Scale noise with p to get rid of noise domination
+
     # Sanitize the output to represent a density
     p = np.maximum(p, 0)
     p /= np.trapz(p, x_array)
     return p
 
-def timestepper(p, mu, sigma, dt, T, verbose=False):
+def timestepper(p, mu, sigma, dt, T, eps=None, verbose=False):
     n_steps = int(T / dt)
     for n in range(n_steps):
         if verbose and n % 1000 == 0:
             print('t =', n * dt)
-        p = step(p, mu, sigma, dt)
+        p = step(p, mu, sigma, dt, eps)
     return p
 
-def psi(p, mu, sigma, dt, T):
-    return p - timestepper(p, mu, sigma, dt, T)
+def psi(p, mu, sigma, dt, T, eps=None):
+    return p - timestepper(p, mu, sigma, dt, T, eps)
 
 def timeEvolution():
     beta = 2.0
@@ -109,6 +118,41 @@ def steadyState(_return=False):
     plt.legend()
     plt.show()
 
+def noiseSteadyState():
+    beta = 2.0
+    V = lambda x: 0.5* (x**2 - 1)**2
+    mu = lambda x: - 2 * (x**2 - 1) * x # drift = - \nabla V(x)
+    sigma = lambda x: np.sqrt(2.0 / beta)
+
+    # Noise size
+    for eps in [1.e-4, 1.e-5, 1.e-6, 1.e-7, 1.e-8, 1.e-9, 1.e-10, 1.e-11]:
+        print('eps =', eps)
+
+        # Uniform initial condition
+        std = 0.1
+        p0 = np.exp( - x_array**2 / (2.0 * std**2) ) / np.sqrt(2.0 * np.pi * std**2)
+        p0 = p0 / np.trapz(p0, x_array)
+
+        # Solve Newton - Krylov
+        dt = 1.e-5
+        T_psi = 0.1
+        F = lambda p: psi(p, mu, sigma, dt, T_psi, eps=eps)
+        try:
+            p_ss = opt.newton_krylov(F, p0, f_tol=1.e-14, maxiter=50, verbose=True)
+        except opt.NoConvergence as e:
+            p_ss = e.args[0]
+
+        plt.plot(x_array, p_ss, label=f"Noise Level {eps}")
+
+    # Plot the solution
+    dist = lambda x: np.exp(-beta * V(x))
+    Z = np.trapz(dist(x_array), x_array)
+    plt.plot(x_array, dist(x_array) / Z, label='Exact Distribution')
+    plt.xlabel(r'$x$')
+    plt.title('Steady-State after 50 Newton-Krylov Iterations')
+    plt.legend()
+    plt.show()
+
 def arnoldi():
     beta = 2.0
     V = lambda x: 0.5* (x**2 - 1)**2
@@ -160,7 +204,7 @@ def parseArguments():
         type=str,
         required=True,
         dest='experiment',
-        help="Specify the experiment to run (e.g., 'timeEvolution', 'steady-state', 'arnoldi')."
+        help="Specify the experiment to run (e.g., 'timeEvolution', 'steady-state', 'arnoldi', 'noise')."
     )
     args = parser.parse_args()
     return args
@@ -173,5 +217,7 @@ if __name__ == '__main__':
         steadyState()
     elif args.experiment == 'arnoldi':
         arnoldi()
+    elif args.experiment == 'noise':
+        noiseSteadyState()
     else:
-        print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
+        print("This experiment is not supported. Choose either 'evolution', 'steady-state', 'arnoldi' or 'noise'.")
