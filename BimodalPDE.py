@@ -124,14 +124,22 @@ def noiseSteadyState():
     mu = lambda x: - 2 * (x**2 - 1) * x # drift = - \nabla V(x)
     sigma = lambda x: np.sqrt(2.0 / beta)
 
-    # Noise size
-    for eps in [1.e-4, 1.e-5, 1.e-6, 1.e-7, 1.e-8, 1.e-9, 1.e-10, 1.e-11]:
-        print('eps =', eps)
+    # Uniform initial condition
+    std = 0.1
+    p0 = np.exp( - x_array**2 / (2.0 * std**2) ) / np.sqrt(2.0 * np.pi * std**2)
+    p0 = p0 / np.trapz(p0, x_array)
 
-        # Uniform initial condition
-        std = 0.1
-        p0 = np.exp( - x_array**2 / (2.0 * std**2) ) / np.sqrt(2.0 * np.pi * std**2)
-        p0 = p0 / np.trapz(p0, x_array)
+    # Invariant Bimodal Distribution
+    dist = lambda x: np.exp(-beta * V(x))
+    Z = np.trapz(dist(x_array), x_array)
+    dist_vals = dist(x_array) / Z
+    plt.plot(x_array, dist_vals, label='Exact Distribution')
+
+    # Noise size
+    eps_list = [1.e-4, 1.e-5, 1.e-6, 1.e-7, 1.e-8, 1.e-9, 1.e-10, 1.e-11]
+    errors = []
+    for eps in eps_list:
+        print('eps =', eps)
 
         # Solve Newton - Krylov
         dt = 1.e-5
@@ -141,16 +149,27 @@ def noiseSteadyState():
             p_ss = opt.newton_krylov(F, p0, f_tol=1.e-14, maxiter=50, verbose=True)
         except opt.NoConvergence as e:
             p_ss = e.args[0]
+        p_ss = np.maximum(p_ss, 1.e5)
+        p_ss /= np.trapz(p_ss, x_array)
 
+        # Compute the KL Divergence between p_ss and dist
+        kl_div = np.trapz(p_ss * np.log(p_ss / dist_vals), x_array)
+        errors.append(kl_div)
+
+        # Plot
         plt.plot(x_array, p_ss, label=f"Noise Level {eps}")
 
     # Plot the solution
-    dist = lambda x: np.exp(-beta * V(x))
-    Z = np.trapz(dist(x_array), x_array)
-    plt.plot(x_array, dist(x_array) / Z, label='Exact Distribution')
     plt.xlabel(r'$x$')
     plt.title('Steady-State after 50 Newton-Krylov Iterations')
     plt.legend()
+
+    plt.figure()
+    plt.loglog(eps_list, errors)
+    plt.xlabel(r'$\varepsilon$')
+    plt.ylabel('KLD)')
+    plt.title(r'Kullback-Leibler Divergence versus Noise Level $\varepsilon$')
+
     plt.show()
 
 def arnoldi():
