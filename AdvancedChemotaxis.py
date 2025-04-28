@@ -169,10 +169,10 @@ def noiseSteadyState():
     eps_list = [1.e-12, 1.e-11, 1.e-10, 1.e-9, 1.e-8, 1.e-7, 1.e-6, 1.e-5, 1.e-4]
     errors = []
 
-    # Do eps = 1.e-13 first as our reference
+    # Do eps = 0 as ou analytic, exact, solution
     dt = 1.e-3
     T_psi = 1.0
-    F = lambda mu: psi(mu, dt, T_psi, eps=1.e-13)
+    F = lambda mu: psi(mu, dt, T_psi, eps=None)
     try:
         dist = opt.newton_krylov(F, B0, f_tol=1.e-10, maxiter=20, verbose=True)
     except opt.NoConvergence as e:
