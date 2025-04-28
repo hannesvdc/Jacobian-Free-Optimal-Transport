@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.random as rd
 import numpy.linalg as lg
 import scipy.sparse.linalg as slg
 import scipy.optimize as opt
@@ -9,17 +10,17 @@ N = 1001
 x_array = np.linspace(-L, L, N)
 dx = 2.0 * L / (N - 1)
 
+rng = rd.RandomState()
+
 D_B = 440.0
 chi_0 = 3800.0
 B_h = 6.8
 K_i = 1.0
-
-# --- Source A(x): define as a function ---
 def A_func(x):
     return np.exp(-x**2 / (2 * 50**2))
 
 # step function
-def step(B, dt):
+def step(B, dt, eps=None):
     # Source Term A
     S = np.log(1.0 + A_func(x_array) / K_i)
     dS_half = (S[1:] - S[:-1]) / dx
@@ -42,6 +43,12 @@ def step(B, dt):
     dB_dt = diffusion - adv
     B[1:-1] += dt * dB_dt
 
+    # Add noise when eps != None
+    if eps is not None:
+        noise = np.sqrt(dt) * eps * rng.normal(0.0, scale=1.0, size=B.size)
+        noise -= np.mean(noise)
+        B = B + B * noise # Scale noise with B to get rid of noise domination
+
     # Neumann BCs
     B[0] = B[1]
     B[-1] = B[-2]
@@ -52,16 +59,16 @@ def step(B, dt):
 
     return B
 
-def timestepper(B, dt, T, verbose=False):
+def timestepper(B, dt, T, verbose=False, eps=None):
     n_steps = int(T / dt)
     for n in range(n_steps):
         if verbose and n % 1000 == 0:
             print('t =', n * dt)
-        B = step(B, dt)
+        B = step(B, dt, eps=eps)
     return B
 
-def psi(B0, dt, T):
-    return B0 - timestepper(B0, dt, T)
+def psi(B0, dt, T, eps=None):
+    return B0 - timestepper(B0, dt, T, verbose=False, eps=eps)
 
 def timeEvolution(_return=False):
     # Initial condition for B(x, 0)
@@ -128,7 +135,6 @@ def arnoldi():
     k = 10
     print('\nComputing Eigenvalues...')
     eigenvalues, _ = slg.eigs(Dpsi, k=k, which='LM', return_eigenvectors=True)
-    #eigenvalues = 1.0 - eigenvalues # Mapping from psi to timestepper
 
     # Compute the eigenvalues using the QR method
     dpsi_mat = np.zeros((N,N))
@@ -154,6 +160,56 @@ def arnoldi():
     plt.axis('equal')
     plt.show()
 
+def noiseSteadyState():
+    # Initial condition for B(x, 0)
+    B0 = np.exp(-x_array**2 / (2 * 100**2))
+    B0 /= np.trapz(B0, x_array)
+
+    # Noise Amplitude
+    eps_list = [1.e-12, 1.e-11, 1.e-10, 1.e-9, 1.e-8, 1.e-7, 1.e-6, 1.e-5, 1.e-4]
+    errors = []
+
+    # Do eps = 1.e-13 first as our reference
+    dt = 1.e-3
+    T_psi = 1.0
+    F = lambda mu: psi(mu, dt, T_psi, eps=1.e-13)
+    try:
+        dist = opt.newton_krylov(F, B0, f_tol=1.e-10, maxiter=20, verbose=True)
+    except opt.NoConvergence as e:
+        dist = e.args[0]
+
+    for eps in eps_list:
+        print('eps =', eps)
+
+        F = lambda mu: psi(mu, dt, T_psi, eps=eps)
+        try:
+            B_ss = opt.newton_krylov(F, B0, f_tol=1.e-10, maxiter=20, verbose=True)
+        except opt.NoConvergence as e:
+            B_ss = e.args[0]
+        B_ss[B_ss <= 0.0] = 1.e-10
+        B_ss /= np.trapz(B_ss, x_array)
+
+        # Compute the KL Divergence between p_ss and dist
+        kl_div = np.trapz(B_ss * np.log(B_ss / dist), x_array)
+        errors.append(kl_div)
+        print('KL Divergence:', kl_div)
+
+        # Plot
+        plt.plot(x_array, B_ss, label=rf"$\varepsilon = {eps}$")
+
+    # Plot the solution
+    plt.xlabel(r'$x$')
+    plt.title('Steady-State after 50 Newton-Krylov Iterations')
+    plt.legend()
+
+    plt.figure()
+    plt.loglog(np.flip(np.array(eps_list)), np.flip(np.array(errors)))
+    plt.xlabel(r'$\varepsilon$')
+    plt.ylabel('KLD')
+    plt.title(r'Kullback-Leibler Divergence versus Noise Level $\varepsilon$')
+
+    plt.show()
+
 def parseArguments():
     import argparse
     parser = argparse.ArgumentParser(description="Run the Bimodal PDE simulation.")
@@ -162,7 +218,7 @@ def parseArguments():
         type=str,
         required=True,
         dest='experiment',
-        help="Specify the experiment to run (e.g., 'timeEvolution', 'steady-state', 'arnoldi')."
+        help="Specify the experiment to run (e.g., 'timeEvolution', 'steady-state', 'arnoldi', 'noise')."
     )
     args = parser.parse_args()
     return args
@@ -175,5 +231,7 @@ if __name__ == '__main__':
         steadyState()
     elif args.experiment == 'arnoldi':
         arnoldi()
+    elif args.experiment == 'noise':
+        noiseSteadyState()
     else:
-        print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
+        print("This experiment is not supported. Choose either 'evolution', 'steady-state', 'arnoldi', or 'noise'.")

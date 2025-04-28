@@ -135,7 +135,7 @@ def noiseSteadyState():
     dist_vals = dist(x_array) / Z
     plt.plot(x_array, dist_vals, label='Exact Distribution')
 
-    # Noise size
+    # Noise Amplitude
     eps_list = [1.e-4, 1.e-5, 1.e-6, 1.e-7, 1.e-8, 1.e-9, 1.e-10, 1.e-11]
     errors = []
     for eps in eps_list:
