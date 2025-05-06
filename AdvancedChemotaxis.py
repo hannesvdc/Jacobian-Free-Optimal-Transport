@@ -174,7 +174,7 @@ def noiseSteadyState():
     T_psi = 1.0
     F = lambda mu: psi(mu, dt, T_psi, eps=None)
     try:
-        dist = opt.newton_krylov(F, B0, f_tol=1.e-10, maxiter=20, verbose=True)
+        dist = opt.newton_krylov(F, B0, f_tol=0.0, maxiter=20, verbose=True)
     except opt.NoConvergence as e:
         dist = e.args[0]
 
@@ -183,7 +183,7 @@ def noiseSteadyState():
 
         F = lambda mu: psi(mu, dt, T_psi, eps=eps)
         try:
-            B_ss = opt.newton_krylov(F, B0, f_tol=1.e-10, maxiter=20, verbose=True)
+            B_ss = opt.newton_krylov(F, B0, f_tol=0.0, maxiter=20, verbose=True)
         except opt.NoConvergence as e:
             B_ss = e.args[0]
         B_ss[B_ss <= 0.0] = 1.e-10
