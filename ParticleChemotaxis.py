@@ -61,5 +61,57 @@ def timeEvolution():
     plt.legend()
     plt.show()
 
+def steadyState():
+    # Physical functions defining the problem
+    S = lambda x: np.tanh(x)
+    dS = lambda x: 1.0 / np.cosh(x)**2
+    chi = lambda s: 1 + 0.5 * s**2
+    D = 0.1
+
+    # Initial condition - standard normal Gaussian
+    N = 10**6
+    X0 = rng.normal(0.0, 1.0, size=N)
+
+    # Do timestepping
+    dt = 1.e-3
+    T_psi = 1.0
+    F = lambda mu: psi(mu, S, dS, chi, dt, T_psi)
+    X_ss = opt.newton_krylov(F, X0, f_tol=1.e-12, verbose=True)
+
+    # Analytic Steady-State for the given chi(S)
+    x_array = np.linspace(-L, L, 1000)
+    dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
+    Z = np.trapz(dist, x_array)
+    dist = dist / Z
+
+     # Plot final distribution
+    plt.hist(X_ss, density=True, bins=int(np.sqrt(N)), label='Newton-Krylov')
+    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
+    plt.xlabel('x')
+    plt.ylabel(r'$\mu(x)$')
+    plt.title('1D Drift-Diffusion with Simple Chemotactic Drift')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+def parseArguments():
+    import argparse
+    parser = argparse.ArgumentParser(description="Run the Bimodal PDE simulation.")
+    parser.add_argument(
+        '--experiment',
+        type=str,
+        required=True,
+        dest='experiment',
+        help="Specify the experiment to run (e.g., 'timeEvolution', 'steady-state', 'arnoldi')."
+    )
+    args = parser.parse_args()
+    return args
+
 if __name__ == '__main__':
-    timeEvolution()
+    args = parseArguments()
+    if args.experiment == 'evolution':
+        timeEvolution()
+    elif args.experiment == 'steady-state':
+        steadyState()
+    else:
+        print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
