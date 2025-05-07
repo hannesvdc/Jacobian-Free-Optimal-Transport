@@ -5,6 +5,10 @@ import scipy.sparse.linalg as slg
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
+import concurrent
+from concurrent.futures.thread import ThreadPoolExecutor
+import pandas as pd
+
 L = 10.0
 rng = rd.RandomState()
 
@@ -27,8 +31,8 @@ def timestepper(X, S, dS, chi, D, dt, T, verbose=False):
         X = step(X, S, dS, chi, D, dt)
     return X
 
-def psi(X0, S, dS, chi, D, dt, T):
-    return X0 - timestepper(X0, S, dS, chi, D, dt, T)
+def psi(X0, S, dS, chi, D, dt, T, verbose=False):
+    return X0 - timestepper(X0, S, dS, chi, D, dt, T, verbose=verbose)
 
 def timeEvolution():
     # Physical functions defining the problem
@@ -75,8 +79,10 @@ def steadyState():
     # Do timestepping
     dt = 1.e-3
     T_psi = 1.0
-    F = lambda mu: psi(mu, S, dS, chi, dt, T_psi)
-    X_ss = opt.newton_krylov(F, X0, f_tol=1.e-12, verbose=True)
+    rdiff = 10.0 / np.sqrt(N)
+    print('rdiff', rdiff)
+    F = lambda mu: psi(mu, S, dS, chi, D, dt, T_psi, verbose=True)
+    X_ss = opt.newton_krylov(F, X0, rdiff=rdiff, f_tol=1.e-12, verbose=True)
 
     # Analytic Steady-State for the given chi(S)
     x_array = np.linspace(-L, L, 1000)
@@ -93,6 +99,41 @@ def steadyState():
     plt.grid(True)
     plt.legend()
     plt.show()
+
+def steadyStateBash():
+    # Physical functions defining the problem
+    S = lambda x: np.tanh(x)
+    dS = lambda x: 1.0 / np.cosh(x)**2
+    chi = lambda s: 1 + 0.5 * s**2
+    D = 0.1
+    dt = 1.e-3
+    T_psi = 1.0
+    def calculateSteadyState(fd_eps, N):
+        X0 = X0 = rng.normal(0.0, 1.0, size=N)
+        F = lambda mu: psi(mu, S, dS, chi, D, dt, T_psi, verbose=True)
+        try:
+            X_ss = opt.newton_krylov(F, X0, rdiff=fd_eps, f_tol=1.e-12, verbose=True)
+        except opt.NoConvergence as e:
+            X_ss = e.args[0]
+        F_value = lg.norm(F(X_ss))
+        return {'fd_eps': fd_eps, 'N': N, 'F_value': F_value}
+    
+    # Define parameter grid
+    fd_eps_values = [1.e-1, 1.e-2, 1.e-3, 1.e-4, 1.e-5]
+    N_values = [10**3, 10**4, 10**5, 10**6]
+    param_combinations = [(eps, N) for eps in fd_eps_values for N in N_values]
+    results = []
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        # Submit all tasks
+        future_to_params = {executor.submit(calculateSteadyState, a, b): (a, b) for a, b in param_combinations}
+        
+        for future in concurrent.futures.as_completed(future_to_params):
+            data = future.result()
+            results.append( data)
+
+    # Create pandas dataframe
+    df = pd.DataFrame(results)
+    df.to_csv("particle_chemotaxis_N_fdeps.csv", index=False)
 
 def parseArguments():
     import argparse
@@ -113,5 +154,7 @@ if __name__ == '__main__':
         timeEvolution()
     elif args.experiment == 'steady-state':
         steadyState()
+    elif args.experiment == 'steady-state-bash':
+        steadyStateBash()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
