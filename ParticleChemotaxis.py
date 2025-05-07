@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 import concurrent
 from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent.futures import as_completed
 import pandas as pd
 
 L = 10.0
@@ -127,7 +128,7 @@ def steadyStateBash():
         # Submit all tasks
         future_to_params = {executor.submit(calculateSteadyState, a, b): (a, b) for a, b in param_combinations}
         
-        for future in concurrent.futures.as_completed(future_to_params):
+        for future in as_completed(future_to_params):
             data = future.result()
             results.append( data)
 
