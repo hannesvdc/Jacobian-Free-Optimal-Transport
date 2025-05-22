@@ -3,7 +3,7 @@ import math
 from geomloss import SamplesLoss
 import matplotlib.pyplot as plt
 
-import SinkhornSGD  as ssgd
+import SinkhornOptimizers as ssgd
 
 L = 10.0
 
