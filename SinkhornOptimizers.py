@@ -24,7 +24,7 @@ def choose_eps_blur(x: pt.Tensor,
     return multiplier * d2.median().item()
 
 # --------------------------------------------------------------------------
-# 1 ─ SINKHORN LOSS (½ S_eps) AND GRADIENT ON A MINI-BATCH
+# SINKHORN LOSS (½ S_eps) AND GRADIENT ON A MINI-BATCH
 # --------------------------------------------------------------------------
 def sinkhorn_loss(
     x_batch: pt.Tensor,                  # (B, d) – requires_grad=False
@@ -65,15 +65,15 @@ def sinkhorn_loss_and_grad(
     return loss.detach(), x.grad.detach()
 
 # --------------------------------------------------------------------------
-# 2 ─ MAIN SGD DRIVER
+# MAIN SGD DRIVER
 # --------------------------------------------------------------------------
 def sinkhorn_sgd(
     X0: pt.Tensor,                       # (N, d) initial cloud on cpu
     timestepper,
-    n_epochs: int = 30,
-    batch_size: int = 10_000,
-    step_size: float = 0.3,
-    replicas: int = 1,
+    n_epochs: int,
+    batch_size: int,
+    step_size: float,
+    replicas: int,
     device: str | pt.device = "mps",
     store_directory=None
 ) -> tuple[pt.Tensor, Sequence[float]]:
@@ -134,10 +134,10 @@ def sinkhorn_sgd(
 def sinkhorn_adam(
     X0: pt.Tensor,                        # (N,d)  initial cloud on *CPU*
     timestepper,
-    n_epochs: int       = 30,
-    batch_size: int     = 10_000,
-    lr: float           = 0.1,           # Adam base learning-rate
-    replicas: int       = 1,
+    n_epochs: int,
+    batch_size: int,
+    lr: float,           # Adam base learning-rate
+    replicas: int,
     device: str | pt.device = "mps",
     store_directory: str | None = None
 ):
