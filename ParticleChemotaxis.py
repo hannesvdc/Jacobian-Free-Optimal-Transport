@@ -100,7 +100,7 @@ def steadyStateSinkhornSGD():
     # Do optimization to find the steady-state particles
     epochs = 1000
     batch_size = 10000
-    lr = 1.e0
+    lr = 1.0
     replicas = 10
     X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device)
 
