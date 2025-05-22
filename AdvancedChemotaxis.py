@@ -70,7 +70,7 @@ def timestepper(B, dt, T, verbose=False, eps=None):
 def psi(B0, dt, T, eps=None):
     return B0 - timestepper(B0, dt, T, verbose=False, eps=eps)
 
-def timeEvolution(_return=False):
+def timeEvolution(_return=False) :
     # Initial condition for B(x, 0)
     B0 = np.exp(-x_array**2 / (2 * 100**2))
     B0 /= np.trapz(B0, x_array)
@@ -109,7 +109,7 @@ def steadyState(_return=False):
 
     # Plot final distribution
     plt.plot(x_array, B_ss, label='Newton-Krylov')
-    plt.plot(x_array, B_inf, linestyle='--', label='Time Evolution')
+    plt.plot(x_array, B_inf, linestyle='--', label='Time Evolution') # type: ignore
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.title('1D Drift-Diffusion with Advanced Chemotactic Drift')
@@ -129,12 +129,12 @@ def arnoldi():
         Compute the matrix-vector product Dpsi * v using finite differences.
         """
         return (timestepper(B_ss + epsilon * v, dt, T_psi) - timestepper(B_ss, dt, T_psi)) / epsilon
-    Dpsi = slg.LinearOperator((N, N), matvec=Dpsi_v, dtype=np.float64)
+    Dpsi = slg.LinearOperator(shape=(N, N), matvec=Dpsi_v, dtype=np.float64) # type: ignore
 
     # Compute the leading eigenvalues using Arnoldi
     k = 10
     print('\nComputing Eigenvalues...')
-    eigenvalues, _ = slg.eigs(Dpsi, k=k, which='LM', return_eigenvectors=True)
+    eigenvalues, _ = slg.eigs(Dpsi, k=k, which='LM', return_eigenvectors=True) # type: ignore
 
     # Compute the eigenvalues using the QR method
     dpsi_mat = np.zeros((N,N))
@@ -144,7 +144,7 @@ def arnoldi():
 
     # Plot in the complex plane
     plt.scatter(eigenvalues.real, eigenvalues.imag, color='blue', marker='o', label='Eigenvalues Arnoldi')
-    plt.scatter(eigenvalues_qr.real, eigenvalues_qr.imag, color='tab:orange', marker='x', label='Eigenvalues QR')
+    #plt.scatter(eigenvalues_qr.real, eigenvalues_qr.imag, color='tab:orange', marker='x', label='Eigenvalues QR')
     theta = np.linspace(0, 2 * np.pi, 500)
     unit_circle = np.exp(1j * theta)
     plt.plot(unit_circle.real, unit_circle.imag, color='red', linestyle='--')

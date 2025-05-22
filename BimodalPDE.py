@@ -191,7 +191,7 @@ def arnoldi():
 
     # Define the LinearOperator for Dpsi
     n = len(p_ss)
-    Dpsi = slg.LinearOperator((n, n), matvec=Dpsi_v, dtype=np.float64)
+    Dpsi = slg.LinearOperator(shape=(n, n), matvec=Dpsi_v, dtype=np.float64)
 
     # Compute the leading eigenvalues using eigs
     k = 10

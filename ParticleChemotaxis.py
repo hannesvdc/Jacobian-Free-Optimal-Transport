@@ -5,10 +5,11 @@ import scipy.sparse.linalg as slg
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
-import concurrent
 from concurrent.futures.thread import ThreadPoolExecutor
 from concurrent.futures import as_completed
 import pandas as pd
+
+from FastKDE import fast_sliding_kde
 
 L = 10.0
 rng = rd.RandomState()
@@ -22,7 +23,7 @@ def step(X, S, dS, chi, D, dt):
     X = np.where(X > L, 2 * L - X, X)
 
     # Return OT of X
-    return np.sort(X) 
+    return X
 
 def timestepper(X, S, dS, chi, D, dt, T, verbose=False):
     n_steps = int(T / dt)
@@ -32,8 +33,14 @@ def timestepper(X, S, dS, chi, D, dt, T, verbose=False):
         X = step(X, S, dS, chi, D, dt)
     return X
 
-def psi(X0, S, dS, chi, D, dt, T, verbose=False):
-    return X0 - timestepper(X0, S, dS, chi, D, dt, T, verbose=verbose)
+def psi(X0, S, dS, chi, D, dt, T, bandwidth=0.1, verbose=False):
+    X = timestepper(X0, S, dS, chi, D, dt, T, verbose=verbose)
+    X = np.sort(X)
+
+    kde_X0 = fast_sliding_kde(X0, bandwidth)
+    kde_X = fast_sliding_kde(X, bandwidth)
+
+    return kde_X0 - kde_X
 
 def timeEvolution():
     # Physical functions defining the problem
@@ -51,6 +58,9 @@ def timeEvolution():
     T = 500.0
     X_inf = timestepper(X0, S, dS, chi, D, dt, T, verbose=True)
 
+    # Print the final psi value
+    print('Psi-Value', lg.norm(psi(X_inf, S, dS, chi, D, dt, T)))
+
     # Analytic Steady-State for the given chi(S)
     x_array = np.linspace(-L, L, 1000)
     dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
@@ -66,7 +76,7 @@ def timeEvolution():
     plt.legend()
     plt.show()
 
-def steadyState():
+def steadyStateKDE():
     # Physical functions defining the problem
     S = lambda x: np.tanh(x)
     dS = lambda x: 1.0 / np.cosh(x)**2
@@ -76,12 +86,12 @@ def steadyState():
     # Initial condition - standard normal Gaussian
     N = 10**6
     X0 = rng.normal(0.0, 1.0, size=N)
+    X0 = np.sort(X0)
 
     # Do timestepping
     dt = 1.e-3
     T_psi = 1.0
-    rdiff = 10.0 / np.sqrt(N)
-    print('rdiff', rdiff)
+    rdiff = 1.0 / np.sqrt(N)
     F = lambda mu: psi(mu, S, dS, chi, D, dt, T_psi, verbose=True)
     X_ss = opt.newton_krylov(F, X0, rdiff=rdiff, f_tol=1.e-12, verbose=True)
 
@@ -113,7 +123,7 @@ def steadyStateBash():
         X0 = X0 = rng.normal(0.0, 1.0, size=N)
         F = lambda mu: psi(mu, S, dS, chi, D, dt, T_psi, verbose=True)
         try:
-            X_ss = opt.newton_krylov(F, X0, rdiff=fd_eps, f_tol=1.e-12, verbose=True)
+            X_ss = opt.newton_krylov(F, X0, rdiff=fd_eps, f_tol=1.e-12, maxiter=10, verbose=True)
         except opt.NoConvergence as e:
             X_ss = e.args[0]
         F_value = lg.norm(F(X_ss))
@@ -154,7 +164,7 @@ if __name__ == '__main__':
     if args.experiment == 'evolution':
         timeEvolution()
     elif args.experiment == 'steady-state':
-        steadyState()
+        steadyStateKDE()
     elif args.experiment == 'steady-state-bash':
         steadyStateBash()
     else:

@@ -128,12 +128,12 @@ def arnoldi():
         Compute the matrix-vector product Dpsi * v using finite differences.
         """
         return (psi(mu_ss + epsilon * v, S, chi, dt, T_psi) - psi(mu_ss, S, chi, dt, T_psi)) / epsilon
-    Dpsi = slg.LinearOperator((N, N), matvec=Dpsi_v, dtype=np.float64)
+    Dpsi = slg.LinearOperator((N, N), matvec=Dpsi_v, dtype=np.float64) # type: ignore
 
     # Compute the leading eigenvalues using Arnoldi
     k = 25
     print('\nComputing Eigenvalues...')
-    eigenvalues, _ = slg.eigs(Dpsi, k=k, which='SM', return_eigenvectors=True)
+    eigenvalues, _ = slg.eigs(Dpsi, k=k, which='SM', return_eigenvectors=True) # type: ignore
     eigenvalues = 1.0 - eigenvalues # Mapping from psi to timestepper
 
     # Compute the eigenvalues using the QR method
@@ -144,7 +144,7 @@ def arnoldi():
 
     # Plot in the complex plane
     plt.scatter(eigenvalues.real, eigenvalues.imag, color='blue', marker='o', label='Eigenvalues Arnoldi')
-    plt.scatter(eigenvalues_qr.real, eigenvalues_qr.imag, color='tab:orange', marker='x', label='Eigenvalues QR')
+    #plt.scatter(eigenvalues_qr.real, eigenvalues_qr.imag, color='tab:orange', marker='x', label='Eigenvalues QR')
     theta = np.linspace(0, 2 * np.pi, 500)
     unit_circle = np.exp(1j * theta)
     plt.plot(unit_circle.real, unit_circle.imag, color='red', linestyle='--')

@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 
 @njit
-def fast_sliding_kde(x, bandwidth, cutoff=3.0):
+def fast_sliding_kde(x, bandwidth, cutoff=3.0, verbose=False):
     """
     Perform KDE at particle positions using Gaussian kernel with cutoff.
     
@@ -29,9 +29,9 @@ def fast_sliding_kde(x, bandwidth, cutoff=3.0):
     j_start = 0
 
     for i in range(N):
-        if i % 1000 == 0:
-            print(i)
         x_i = x[i]
+        if i % 1000 == 0 and verbose:
+            print('KDE i =', i)
 
         # Advance window start
         while j_start < N and x[j_start] < x_i - cutoff_dist:
