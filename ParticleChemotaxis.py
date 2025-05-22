@@ -1,26 +1,17 @@
-import numpy as np
-import numpy.random as rd
-import numpy.linalg as lg
-import scipy.sparse.linalg as slg
-import scipy.optimize as opt
+import torch as pt
 import matplotlib.pyplot as plt
 
-from concurrent.futures.thread import ThreadPoolExecutor
-from concurrent.futures import as_completed
-import pandas as pd
-
-from FastKDE import fast_sliding_kde
+import SinkhornSGD  as ssgd
 
 L = 10.0
-rng = rd.RandomState()
 
 def step(X, S, dS, chi, D, dt):
     # EM Step
-    X = X + chi(S(X)) * dS(X) * dt + np.sqrt(2.0 * D * dt) * rng.normal(0.0, 1.0, size=X.size)
+    X = X + chi(S(X)) * dS(X) * dt + pt.sqrt(2.0 * D * dt) * pt.normal(0.0, 1.0, size=X.size)
     
     # Reflective (Neumann) boundary conditions
-    X = np.where(X < -L, 2 * (-L) - X, X)
-    X = np.where(X > L, 2 * L - X, X)
+    X = pt.where(X < -L, 2 * (-L) - X, X)
+    X = pt.where(X > L, 2 * L - X, X)
 
     # Return OT of X
     return X
@@ -33,42 +24,30 @@ def timestepper(X, S, dS, chi, D, dt, T, verbose=False):
         X = step(X, S, dS, chi, D, dt)
     return X
 
-def psi(X0, S, dS, chi, D, dt, T, bandwidth=0.1, verbose=False):
-    X = timestepper(X0, S, dS, chi, D, dt, T, verbose=verbose)
-    X = np.sort(X)
-
-    kde_X0 = fast_sliding_kde(X0, bandwidth)
-    kde_X = fast_sliding_kde(X, bandwidth)
-
-    return kde_X0 - kde_X
-
 def timeEvolution():
     # Physical functions defining the problem
-    S = lambda x: np.tanh(x)
-    dS = lambda x: 1.0 / np.cosh(x)**2
+    S = lambda x: pt.tanh(x)
+    dS = lambda x: 1.0 / pt.cosh(x)**2
     chi = lambda s: 1 + 0.5 * s**2
     D = 0.1
 
     # Initial condition - standard normal Gaussian
     N = 10**6
-    X0 = rng.normal(0.0, 1.0, size=N)
+    X0 = pt.normal(0.0, 1.0, size=N)
 
     # Do timestepping
     dt = 1.e-3
     T = 500.0
     X_inf = timestepper(X0, S, dS, chi, D, dt, T, verbose=True)
 
-    # Print the final psi value
-    print('Psi-Value', lg.norm(psi(X_inf, S, dS, chi, D, dt, T)))
-
     # Analytic Steady-State for the given chi(S)
-    x_array = np.linspace(-L, L, 1000)
-    dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
-    Z = np.trapz(dist, x_array)
+    x_array = pt.linspace(-L, L, 1000)
+    dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
+    Z = pt.trapz(dist, x_array)
     dist = dist / Z
 
     # Plot the particle histogram and compare it to the analytic steady-state
-    plt.hist(X_inf, density=True, bins=int(np.sqrt(N)), label='Particles')
+    plt.hist(X_inf, density=True, bins=int(pt.sqrt(N)), label='Particles')
     plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
@@ -76,75 +55,53 @@ def timeEvolution():
     plt.legend()
     plt.show()
 
-def steadyStateKDE():
+def steadyStateSinkhornSGD():
     # Physical functions defining the problem
-    S = lambda x: np.tanh(x)
-    dS = lambda x: 1.0 / np.cosh(x)**2
+    S = lambda x: pt.tanh(x)
+    dS = lambda x: 1.0 / pt.cosh(x)**2
     chi = lambda s: 1 + 0.5 * s**2
     D = 0.1
 
     # Initial condition - standard normal Gaussian
-    N = 10**6
-    X0 = rng.normal(0.0, 1.0, size=N)
-    X0 = np.sort(X0)
+    N = 10**5
+    X0 = pt.normal(0.0, 1.0, size=N).sort()
 
-    # Do timestepping
+    # Build the timestepper function
     dt = 1.e-3
-    T_psi = 1.0
-    rdiff = 1.0 / np.sqrt(N)
-    F = lambda mu: psi(mu, S, dS, chi, D, dt, T_psi, verbose=True)
-    X_ss = opt.newton_krylov(F, X0, rdiff=rdiff, f_tol=1.e-12, verbose=True)
+    T_psi = 0.1
+    stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi)
+
+    # Do optimization to find the steady-state particles
+    epochs = 1000
+    batch_size = 1000
+    lr = 0.1
+    eps_entropy_bias = 0.1
+    replicas = 10
+    X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, eps_entropy_bias, replicas)
 
     # Analytic Steady-State for the given chi(S)
-    x_array = np.linspace(-L, L, 1000)
-    dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
-    Z = np.trapz(dist, x_array)
+    x_array = pt.linspace(-L, L, 1000)
+    dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
+    Z = pt.trapz(dist, x_array)
     dist = dist / Z
 
-     # Plot final distribution
-    plt.hist(X_ss, density=True, bins=int(np.sqrt(N)), label='Newton-Krylov')
+    # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
+    batch_counter = pt.linspace(0.0, epochs, len(losses))
+    plt.semilogy(batch_counter, losses, label='Sinkhorn Divergence')
+    plt.xlabel('Batch')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.legend()
+
+    plt.figure()
+    plt.hist(X_inf, density=True, bins=int(pt.sqrt(N)), label='Particles')
     plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
-    plt.title('1D Drift-Diffusion with Simple Chemotactic Drift')
     plt.grid(True)
     plt.legend()
-    plt.show()
-
-def steadyStateBash():
-    # Physical functions defining the problem
-    S = lambda x: np.tanh(x)
-    dS = lambda x: 1.0 / np.cosh(x)**2
-    chi = lambda s: 1 + 0.5 * s**2
-    D = 0.1
-    dt = 1.e-3
-    T_psi = 1.0
-    def calculateSteadyState(fd_eps, N):
-        X0 = X0 = rng.normal(0.0, 1.0, size=N)
-        F = lambda mu: psi(mu, S, dS, chi, D, dt, T_psi, verbose=True)
-        try:
-            X_ss = opt.newton_krylov(F, X0, rdiff=fd_eps, f_tol=1.e-12, maxiter=10, verbose=True)
-        except opt.NoConvergence as e:
-            X_ss = e.args[0]
-        F_value = lg.norm(F(X_ss))
-        return {'fd_eps': fd_eps, 'N': N, 'F_value': F_value}
     
-    # Define parameter grid
-    fd_eps_values = [1.e-1, 1.e-2, 1.e-3, 1.e-4, 1.e-5]
-    N_values = [10**3, 10**4, 10**5, 10**6]
-    param_combinations = [(eps, N) for eps in fd_eps_values for N in N_values]
-    results = []
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        # Submit all tasks
-        future_to_params = {executor.submit(calculateSteadyState, a, b): (a, b) for a, b in param_combinations}
-        
-        for future in as_completed(future_to_params):
-            data = future.result()
-            results.append( data)
-
-    # Create pandas dataframe
-    df = pd.DataFrame(results)
-    df.to_csv("particle_chemotaxis_N_fdeps.csv", index=False)
+    plt.show()
 
 def parseArguments():
     import argparse
@@ -163,9 +120,5 @@ if __name__ == '__main__':
     args = parseArguments()
     if args.experiment == 'evolution':
         timeEvolution()
-    elif args.experiment == 'steady-state':
-        steadyStateKDE()
-    elif args.experiment == 'steady-state-bash':
-        steadyStateBash()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
