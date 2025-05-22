@@ -43,7 +43,7 @@ def sinkhorn_loss_and_grad(
     y = pt.stack([timestepper(x) for _ in range(replicas)]).mean(0).detach()
 
     loss = 0.5 * loss_fn(x, y)              # ½ S_ε for our objective
-    loss.backward()                         # d(loss)/dx ∈ x.grad
+    loss.backward()                         # x.grad = d(loss)/dx
     return loss.detach(), x.grad.detach()
 
 # --------------------------------------------------------------------------

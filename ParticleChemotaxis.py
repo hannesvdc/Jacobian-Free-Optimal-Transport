@@ -146,18 +146,17 @@ def testSinkhornSGDSteadyState():
     # Calcuate the Sinkhorn-loss
     samples_tensor = pt.Tensor(samples_list).reshape((N,1))
     eps = ssgd.choose_eps_blur(samples_tensor, stepper, N, multiplier=1.0)
-    print('eps =', eps)
     replicas = 10
     loss_fn = SamplesLoss(
-        loss   ="sinkhorn",
+        loss   = "sinkhorn",
         p      = 2,
         blur   = eps,
-        debias = True,                      # Sinkhorn *divergence*
-        scaling= 0.9,                       # ε-scaling warm start
-        backend="tensorized",               # fast for B ≲ 20 000
+        debias = True,                       # Sinkhorn *divergence*
+        scaling= 0.9,                        # ε-scaling warm start
+        backend= "tensorized",               # fast for B ≲ 20 000
     )
     loss, grad =  ssgd.sinkhorn_loss_and_grad( samples_tensor, stepper, loss_fn, replicas)
-    print('Steady-State Sinkhorn Loss', loss.item())
+    print('Upper Bound for the Steady-State Sinkhorn Loss', loss.item())
 
     x_array = pt.linspace(-L, L, 1000)
     plt.hist(samples_list, density=True, bins=int(math.sqrt(N)), label='Particles')
