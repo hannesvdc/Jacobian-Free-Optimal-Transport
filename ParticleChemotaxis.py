@@ -1,10 +1,32 @@
 import torch as pt
 import math
+from geomloss import SamplesLoss
 import matplotlib.pyplot as plt
 
 import SinkhornSGD  as ssgd
 
 L = 10.0
+
+# Simple Brownian MCMC sampler
+def sampleInvariantMCMC(mu, N):
+    x = pt.tensor([0.0])
+    dt = 10.0
+    samples = []
+    n_accepted = 0.0
+    for n in range(N):
+        y = x + math.sqrt(2.0 * dt) * pt.normal(0.0, 1.0, (1,))
+        if y < -L:
+            y = -2*L - x
+        elif y > L:
+            y = 2*L - y
+        acc = mu(y) / mu(x)
+        if pt.rand((1,)) <= acc:
+            n_accepted += 1
+            x = y
+        samples.append(x[0].item())
+
+    print('Acceptance Rate', n_accepted / N)
+    return samples
 
 def step(X, S, dS, chi, D, dt, device, dtype):
     # EM Step
@@ -106,6 +128,47 @@ def steadyStateSinkhornSGD():
     
     plt.show()
 
+def testSinkhornSGDSteadyState():
+    # Physical functions defining the problem
+    S = lambda x: pt.tanh(x)
+    dS = lambda x: 1.0 / pt.cosh(x)**2
+    chi = lambda s: 1 + 0.5 * s**2
+    D = 0.1
+    dist = lambda x: pt.exp( (S(x) + S(x)**3 / 6.0) / D)
+    dt = 1.e-3
+    T_psi = 1.0
+    stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=pt.device("cpu"), dtype=pt.float32)
+
+    # Sample N particles from the invariant distribution
+    N = 10_000
+    samples_list = sampleInvariantMCMC(dist, N)
+
+    # Calcuate the Sinkhorn-loss
+    samples_tensor = pt.Tensor(samples_list).reshape((N,1))
+    eps = ssgd.choose_eps_blur(samples_tensor, stepper, N, multiplier=1.0)
+    print('eps =', eps)
+    replicas = 10
+    loss_fn = SamplesLoss(
+        loss   ="sinkhorn",
+        p      = 2,
+        blur   = eps,
+        debias = True,                      # Sinkhorn *divergence*
+        scaling= 0.9,                       # ε-scaling warm start
+        backend="tensorized",               # fast for B ≲ 20 000
+    )
+    loss, grad =  ssgd.sinkhorn_loss_and_grad( samples_tensor, stepper, loss_fn, replicas)
+    print('Steady-State Sinkhorn Loss', loss.item())
+
+    x_array = pt.linspace(-L, L, 1000)
+    plt.hist(samples_list, density=True, bins=int(math.sqrt(N)), label='Particles')
+    plt.plot(x_array, dist(x_array) / pt.trapz(dist(x_array), x_array), linestyle='--', label='Analytic Steady State')
+    plt.xlabel('x')
+    plt.ylabel(r'$\mu(x)$')
+    plt.grid(True)
+    plt.legend()
+    
+    plt.show()
+
 def parseArguments():
     import argparse
     parser = argparse.ArgumentParser(description="Run the Bimodal PDE simulation.")
@@ -125,5 +188,7 @@ if __name__ == '__main__':
         timeEvolution()
     elif args.experiment == 'sinkhorn':
         steadyStateSinkhornSGD()
+    elif args.experiment == 'test':
+        testSinkhornSGDSteadyState()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
