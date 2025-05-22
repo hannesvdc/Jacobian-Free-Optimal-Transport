@@ -155,7 +155,7 @@ def testSinkhornSGDSteadyState():
         scaling= 0.9,                        # ε-scaling warm start
         backend= "tensorized",               # fast for B ≲ 20 000
     )
-    loss, grad =  ssgd.sinkhorn_loss_and_grad( samples_tensor, stepper, loss_fn, replicas)
+    loss, grad =  ssgd.sinkhorn_loss_and_grad(samples_tensor, stepper, loss_fn, replicas)
     print('Upper Bound for the Steady-State Sinkhorn Loss', loss.item())
 
     x_array = pt.linspace(-L, L, 1000)

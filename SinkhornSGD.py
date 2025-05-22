@@ -56,7 +56,6 @@ def sinkhorn_sgd(
     batch_size: int = 10_000,
     step_size: float = 0.3,
     replicas: int = 1,
-    tol_disp: float = 1e-3,
     device: str | pt.device = "mps",
 ) -> tuple[pt.Tensor, Sequence[float]]:
     """
@@ -104,9 +103,5 @@ def sinkhorn_sgd(
 
         print(f"epoch {epoch:3d} | last minibatch ½S_ε={loss.item():.4e} "
               f"| ⟨|x−φ(x)|⟩={disp:.4e}")
-
-        if disp < tol_disp:
-            print(f"[INFO] convergence: ⟨|x−φ(x)|⟩ < {tol_disp}")
-            break
 
     return X.cpu(), losses
