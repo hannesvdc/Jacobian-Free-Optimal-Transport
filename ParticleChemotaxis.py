@@ -1,13 +1,14 @@
 import torch as pt
+import math
 import matplotlib.pyplot as plt
 
 import SinkhornSGD  as ssgd
 
 L = 10.0
 
-def step(X, S, dS, chi, D, dt):
+def step(X, S, dS, chi, D, dt, device, dtype):
     # EM Step
-    X = X + chi(S(X)) * dS(X) * dt + pt.sqrt(2.0 * D * dt) * pt.normal(0.0, 1.0, size=X.size)
+    X = X + chi(S(X)) * dS(X) * dt + math.sqrt(2.0 * D * dt) * pt.normal(0.0, 1.0, X.shape, device=device, dtype=dtype)
     
     # Reflective (Neumann) boundary conditions
     X = pt.where(X < -L, 2 * (-L) - X, X)
@@ -16,12 +17,12 @@ def step(X, S, dS, chi, D, dt):
     # Return OT of X
     return X
 
-def timestepper(X, S, dS, chi, D, dt, T, verbose=False):
+def timestepper(X, S, dS, chi, D, dt, T, device, dtype, verbose=False):
     n_steps = int(T / dt)
     for n in range(n_steps):
         if verbose and n % 100 == 0:
             print('t =', n * dt)
-        X = step(X, S, dS, chi, D, dt)
+        X = step(X, S, dS, chi, D, dt, device, dtype)
     return X
 
 def timeEvolution():
@@ -33,7 +34,7 @@ def timeEvolution():
 
     # Initial condition - standard normal Gaussian
     N = 10**6
-    X0 = pt.normal(0.0, 1.0, size=N)
+    X0 = pt.normal(0.0, 1.0, (N,1))
 
     # Do timestepping
     dt = 1.e-3
@@ -47,7 +48,7 @@ def timeEvolution():
     dist = dist / Z
 
     # Plot the particle histogram and compare it to the analytic steady-state
-    plt.hist(X_inf, density=True, bins=int(pt.sqrt(N)), label='Particles')
+    plt.hist(X_inf, density=True, bins=int(math.sqrt(N)), label='Particles')
     plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
@@ -56,6 +57,9 @@ def timeEvolution():
     plt.show()
 
 def steadyStateSinkhornSGD():
+    device = pt.device("mps")
+    dtype = pt.float32
+
     # Physical functions defining the problem
     S = lambda x: pt.tanh(x)
     dS = lambda x: 1.0 / pt.cosh(x)**2
@@ -63,21 +67,20 @@ def steadyStateSinkhornSGD():
     D = 0.1
 
     # Initial condition - standard normal Gaussian
-    N = 10**5
-    X0 = pt.normal(0.0, 1.0, size=N).sort()
+    N = 10**4
+    X0 = pt.normal(0.0, 1.0, (N,1), device=device, dtype=dtype, requires_grad=False)
 
     # Build the timestepper function
     dt = 1.e-3
-    T_psi = 0.1
-    stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi)
+    T_psi = 1.0
+    stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
 
     # Do optimization to find the steady-state particles
     epochs = 1000
-    batch_size = 1000
-    lr = 0.1
-    eps_entropy_bias = 0.1
+    batch_size = 10000
+    lr = 1.e0
     replicas = 10
-    X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, eps_entropy_bias, replicas)
+    X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device)
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
@@ -94,7 +97,7 @@ def steadyStateSinkhornSGD():
     plt.legend()
 
     plt.figure()
-    plt.hist(X_inf, density=True, bins=int(pt.sqrt(N)), label='Particles')
+    plt.hist(X_inf, density=True, bins=int(math.sqrt(N)), label='Particles')
     plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
@@ -120,5 +123,7 @@ if __name__ == '__main__':
     args = parseArguments()
     if args.experiment == 'evolution':
         timeEvolution()
+    elif args.experiment == 'sinkhorn':
+        steadyStateSinkhornSGD()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
