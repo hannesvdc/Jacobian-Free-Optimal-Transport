@@ -1,7 +1,7 @@
 # sinkhorn_sgd.py  ----------------------------------------------------------
 # Minimal Sinkhorn-descent steady-state solver (SGD version only)
 #
-# Dependencies:   pip install torch geomloss
+# Dependencies:   pip3 install torch geomloss
 #   • PyTorch        – array engine + autograd
 #   • GeomLoss       – entropic Sinkhorn divergence + gradients
 # --------------------------------------------------------------------------
@@ -57,6 +57,7 @@ def sinkhorn_sgd(
     step_size: float = 0.3,
     replicas: int = 1,
     device: str | pt.device = "mps",
+    store_directory=None
 ) -> tuple[pt.Tensor, Sequence[float]]:
     """
     Stochastic-gradient Sinkhorn descent.
@@ -69,7 +70,7 @@ def sinkhorn_sgd(
     # Choose ε if not provided
     eps = choose_eps_blur(X, timestepper, multiplier=1.0)
     loss_fn = SamplesLoss(
-        loss   ="sinkhorn",
+        loss   = "sinkhorn",
         p      = 2,
         blur   = eps,
         debias = True,                      # Sinkhorn *divergence*
@@ -82,6 +83,10 @@ def sinkhorn_sgd(
     losses: list[float] = []
     for epoch in range(n_epochs):
         print('Epoch #', epoch)
+
+        if store_directory is not None and epoch % 200 == 0:
+            pt.save(X.cpu(), store_directory + f"particles_e{epoch}.pt")
+
         # Shuffle once per epoch
         perm = pt.randperm(N, device=device)
 
@@ -92,8 +97,6 @@ def sinkhorn_sgd(
             # SGD update
             with pt.no_grad():
                 X[idx] -= step_size * grad / pt.norm(grad)
-
-            print('Batch #', start // batch_size, loss.item(), pt.abs(step_size * grad / pt.norm(grad)).median())
             losses.append(loss.item())
 
         # --- monitor average displacement (cheap diagnostic) -------------
@@ -103,5 +106,6 @@ def sinkhorn_sgd(
 
         print(f"epoch {epoch:3d} | last minibatch ½S_ε={loss.item():.4e} "
               f"| ⟨|x−φ(x)|⟩={disp:.4e}")
-
+        
+    pt.save(pt.Tensor(losses), store_directory + "sinkhorn_losses.pt")
     return X.cpu(), losses

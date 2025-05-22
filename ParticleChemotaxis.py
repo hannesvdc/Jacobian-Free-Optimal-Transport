@@ -81,6 +81,7 @@ def timeEvolution():
 def steadyStateSinkhornSGD():
     device = pt.device("mps")
     dtype = pt.float32
+    store_directory = "/Users/hannesvdc/Research/Projects/Jacobian-Free-Optimal-Transport/Results/"
 
     # Physical functions defining the problem
     S = lambda x: pt.tanh(x)
@@ -98,11 +99,11 @@ def steadyStateSinkhornSGD():
     stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
 
     # Do optimization to find the steady-state particles
-    epochs = 1000
+    epochs = 5000
     batch_size = 10000
     lr = 1.0
     replicas = 10
-    X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device)
+    X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
