@@ -85,7 +85,7 @@ def sinkhorn_sgd(
         print('Epoch #', epoch)
 
         if store_directory is not None and epoch % 200 == 0:
-            pt.save(X.cpu(), store_directory + f"particles_e{epoch}.pt")
+            pt.save(X.cpu(), store_directory + "particles.pt")
 
         # Shuffle once per epoch
         perm = pt.randperm(N, device=device)
