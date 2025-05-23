@@ -3,7 +3,7 @@ import math
 from geomloss import SamplesLoss
 import matplotlib.pyplot as plt
 
-import SinkhornOptimizers as ssgd
+import SinkhornOptimizers as sopt
 
 L = 10.0
 
@@ -89,7 +89,7 @@ def steadyStateSinkhornSGD(optimizer):
     chi = lambda s: 1 + 0.5 * s**2
     D = 0.1
 
-    # Initial condition - standard normal Gaussian
+    # Initial condition - Gaussian (mean 0, stdev 1)
     N = 10**4
     X0 = pt.normal(0.0, 1.0, (N,1), device=device, dtype=dtype, requires_grad=False)
 
@@ -104,10 +104,11 @@ def steadyStateSinkhornSGD(optimizer):
     replicas = 10
     if optimizer == 'SGD':
         lr = 1.0
-        X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
+        X_inf, losses = sopt.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
     elif optimizer == 'Adam':
         lr = 0.1
-        X_inf, losses = ssgd.sinkhorn_adam(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
+        X_inf, losses = sopt.sinkhorn_adam(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
+
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
     dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
@@ -149,7 +150,7 @@ def testSinkhornSGDSteadyState():
 
     # Calcuate the Sinkhorn-loss
     samples_tensor = pt.Tensor(samples_list).reshape((N,1))
-    eps = ssgd.choose_eps_blur(samples_tensor, stepper, N, multiplier=1.0)
+    eps = sopt.choose_eps_blur(samples_tensor, stepper, N, multiplier=1.0)
     replicas = 10
     loss_fn = SamplesLoss(
         loss   = "sinkhorn",
@@ -159,7 +160,7 @@ def testSinkhornSGDSteadyState():
         scaling= 0.9,                        # ε-scaling warm start
         backend= "tensorized",               # fast for B ≲ 20 000
     )
-    loss, grad =  ssgd.sinkhorn_loss_and_grad(samples_tensor, stepper, loss_fn, replicas)
+    loss =  sopt.sinkhorn_loss(samples_tensor, stepper, loss_fn, replicas)
     print('Upper Bound for the Steady-State Sinkhorn Loss', loss.item())
 
     x_array = pt.linspace(-L, L, 1000)
@@ -180,7 +181,7 @@ def parseArguments():
         type=str,
         required=True,
         dest='experiment',
-        help="Specify the experiment to run (e.g., 'timeEvolution', 'steady-state', 'arnoldi')."
+        help="Specify the experiment to run (e.g., 'evolution', 'sinkhorn')."
     )
     parser.add_argument(
         '--optimizer',
@@ -202,4 +203,4 @@ if __name__ == '__main__':
     elif args.experiment == 'test':
         testSinkhornSGDSteadyState()
     else:
-        print("This experiment is not supported. Choose either 'evolution', 'steady-state' or 'arnoldi'.")
+        print("This experiment is not supported. Choose either 'evolution', 'sinkhorn'.")

@@ -75,8 +75,7 @@ def sinkhorn_sgd(
     step_size: float,
     replicas: int,
     device: str | pt.device = "mps",
-    store_directory=None
-) -> tuple[pt.Tensor, Sequence[float]]:
+    store_directory=None) -> tuple[pt.Tensor, Sequence[float]]:
     """
     Stochastic-gradient Sinkhorn descent.
     Returns (final_cloud_on_cpu, list_of_loss_values).
@@ -99,7 +98,7 @@ def sinkhorn_sgd(
     print(f"[INFO] Initial Loss", sinkhorn_loss_and_grad(X, timestepper, loss_fn, replicas)[0].item())
 
     losses: list[float] = []
-    for epoch in range(n_epochs):
+    for epoch in range(1, n_epochs+1):
         print('Epoch #', epoch)
 
         if store_directory is not None and epoch % 200 == 0:
@@ -139,8 +138,7 @@ def sinkhorn_adam(
     lr: float,           # Adam base learning-rate
     replicas: int,
     device: str | pt.device = "mps",
-    store_directory: str | None = None
-):
+    store_directory: str | None = None):
     """
     Sinkhorn-descent steady-state solver driven by Adam.
 
@@ -156,17 +154,21 @@ def sinkhorn_adam(
     loss_fn = SamplesLoss("sinkhorn", p=2, blur=eps,
                           debias=True, backend="tensorized", scaling=0.9)
     print(f"[INFO] blur ε = {eps:.4e}")
+    print(f"[INFO] Initial Loss", sinkhorn_loss(X_param, timestepper, loss_fn, replicas).item())
 
+    lr_decrease_step = 250
+    lr_decrease_factor = 0.5
     opt = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
+    scheduler = pt.optim.lr_scheduler.StepLR(opt, lr_decrease_step, lr_decrease_factor)
     def save_particles(epoch):
         if store_directory is None: return
-        pt.save(X_param.detach().cpu(),
-                os.path.join(store_directory, f"particles_adam_e{epoch:04d}.pt"))
+        pt.save(X_param.detach().cpu(), os.path.join(store_directory, f"particles_adam_e{epoch:04d}.pt"))
 
     losses = []
-    for epoch in range(n_epochs):
+    for epoch in range(1, n_epochs+1):
         print(f"Epoch {epoch:3d}")
-        save_particles(epoch)
+        if store_directory is not None and epoch % 200 == 0:
+            save_particles(epoch)
 
         perm = pt.randperm(N, device=device)          # shuffle indices
 
@@ -179,8 +181,12 @@ def sinkhorn_adam(
             loss = sinkhorn_loss(x_sub, timestepper, loss_fn, replicas)
 
             # Only gradients for rows in idx are non-zero; adam sees them
-            loss.backward()           # autograd on full parameter
+            loss.backward() # autograd on full parameter
+            grad_norm = X_param.grad.norm().item()
+            lr_now = opt.param_groups[0]['lr'] 
+
             opt.step()
+            scheduler.step()
 
             losses.append(loss.item())
 
@@ -190,10 +196,12 @@ def sinkhorn_adam(
             disp = (timestepper(X_param[probe_idx]) -
                     X_param[probe_idx]).norm(dim=1).mean().item()
 
-        print(f"  last ½S_ε = {loss.item():.4e} | "
+        print(f" last ½S_ε = {loss.item():.4e} | "
+              f"‖grad‖₂={grad_norm:.3e} | "
+              f"lr={lr_now:.2e} | "
               f"⟨|x−φ(x)|⟩ = {disp:.4e}")
 
-    save_particles(n_epochs)
+    # Store the loss history
     pt.save(pt.tensor(losses),
             os.path.join(store_directory or ".", "sinkhorn_adam_losses.pt"))
 
