@@ -158,15 +158,15 @@ def sinkhorn_adam(
     print(f"[INFO] blur ε = {eps:.4e}")
 
     opt = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
-    def save_cloud(epoch):
+    def save_particles(epoch):
         if store_directory is None: return
         pt.save(X_param.detach().cpu(),
-                os.path.join(store_directory, f"particles_e{epoch:04d}.pt"))
+                os.path.join(store_directory, f"particles_adam_e{epoch:04d}.pt"))
 
     losses = []
     for epoch in range(n_epochs):
         print(f"Epoch {epoch:3d}")
-        save_cloud(epoch)
+        save_particles(epoch)
 
         perm = pt.randperm(N, device=device)          # shuffle indices
 
@@ -193,8 +193,8 @@ def sinkhorn_adam(
         print(f"  last ½S_ε = {loss.item():.4e} | "
               f"⟨|x−φ(x)|⟩ = {disp:.4e}")
 
-    save_cloud(n_epochs)
+    save_particles(n_epochs)
     pt.save(pt.tensor(losses),
-            os.path.join(store_directory or ".", "sinkhorn_losses.pt"))
+            os.path.join(store_directory or ".", "sinkhorn_adam_losses.pt"))
 
     return X_param.detach().cpu(), losses

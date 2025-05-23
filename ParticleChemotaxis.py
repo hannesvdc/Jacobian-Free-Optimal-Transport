@@ -78,7 +78,7 @@ def timeEvolution():
     plt.legend()
     plt.show()
 
-def steadyStateSinkhornSGD():
+def steadyStateSinkhornSGD(optimizer):
     device = pt.device("mps")
     dtype = pt.float32
     store_directory = "/Users/hannesvdc/Research/Projects/Jacobian-Free-Optimal-Transport/Results/"
@@ -101,10 +101,13 @@ def steadyStateSinkhornSGD():
     # Do optimization to find the steady-state particles
     epochs = 5000
     batch_size = 10000
-    lr = 1.0
     replicas = 10
-    X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
-
+    if optimizer == 'SGD':
+        lr = 1.0
+        X_inf, losses = ssgd.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
+    elif optimizer == 'Adam':
+        lr = 0.1
+        X_inf, losses = ssgd.sinkhorn_adam(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
     dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
@@ -179,6 +182,14 @@ def parseArguments():
         dest='experiment',
         help="Specify the experiment to run (e.g., 'timeEvolution', 'steady-state', 'arnoldi')."
     )
+    parser.add_argument(
+        '--optimizer',
+        type=str,
+        required=False,
+        dest='optimizer',
+        default='Adam',
+        help="Specify the optimizer to use for steady-state calculations. Options are SGD and Adam (default)."
+    )
     args = parser.parse_args()
     return args
 
@@ -187,7 +198,7 @@ if __name__ == '__main__':
     if args.experiment == 'evolution':
         timeEvolution()
     elif args.experiment == 'sinkhorn':
-        steadyStateSinkhornSGD()
+        steadyStateSinkhornSGD(args.optimizer)
     elif args.experiment == 'test':
         testSinkhornSGDSteadyState()
     else:
