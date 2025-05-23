@@ -32,7 +32,7 @@ def step(X, S, dS, chi, D, dt, device, dtype):
     # Check initial boundary conditions
     X = pt.where(X < -L, 2 * (-L) - X, X)
     X = pt.where(X > L, 2 * L - X, X)
-    
+
     # EM Step
     X = X + chi(S(X)) * dS(X) * dt + math.sqrt(2.0 * D * dt) * pt.normal(0.0, 1.0, X.shape, device=device, dtype=dtype)
     
@@ -110,7 +110,7 @@ def steadyStateSinkhorn(optimizer):
     if optimizer == 'SGD':
         X_inf, losses = sopt.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
     elif optimizer == 'Adam':
-        X_inf, losses = sopt.sinkhorn_adam(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
+        X_inf, losses, grad_norms = sopt.sinkhorn_adam(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
@@ -121,6 +121,7 @@ def steadyStateSinkhorn(optimizer):
     # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
     batch_counter = pt.linspace(0.0, epochs, len(losses))
     plt.semilogy(batch_counter, losses, label='Sinkhorn Divergence')
+    plt.semilogy(batch_counter, grad_norms, label='Sinkhorn Divergence Gradient')
     plt.xlabel('Batch')
     plt.ylabel('Loss')
     plt.grid(True)

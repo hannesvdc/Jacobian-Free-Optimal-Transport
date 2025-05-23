@@ -159,12 +159,13 @@ def sinkhorn_adam(
     lr_decrease_step = 100
     lr_decrease_factor = 0.5
     opt = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
-    scheduler = pt.optim.lr_scheduler.StepLR(opt, lr_decrease_step, lr_decrease_factor)
+    sched = pt.optim.lr_scheduler.StepLR(opt, step_size=lr_decrease_step, gamma=lr_decrease_factor)
     def save_particles(epoch):
         if store_directory is None: return
         pt.save(X_param.detach().cpu(), os.path.join(store_directory, f"particles_adam_e{epoch:04d}.pt"))
 
     losses = []
+    grad_norms = []
     for epoch in range(1, n_epochs+1):
         print(f"Epoch {epoch:3d}")
         if store_directory is not None and epoch % 200 == 0:
@@ -183,26 +184,26 @@ def sinkhorn_adam(
             # Only gradients for rows in idx are non-zero; adam sees them
             loss.backward() # autograd on full parameter
             grad_norm = X_param.grad.norm().item()
-            lr_now = opt.param_groups[0]['lr'] 
 
             opt.step()
-            scheduler.step()
-
             losses.append(loss.item())
+            grad_norms.append(grad_norm)
+        
+        # ---- Update the learning rate after each epoch ----------
+        sched.step()
+        lr_now = opt.param_groups[0]['lr'] 
 
         # ---- inexpensive displacement diagnostic ----------------
         with pt.no_grad():
             probe_idx = pt.randperm(N, device=device)[:min(10_000, N)]
             disp = (timestepper(X_param[probe_idx]) -
                     X_param[probe_idx]).norm(dim=1).mean().item()
-
         print(f" last ½S_ε = {loss.item():.4e} | "
               f"‖grad‖₂={grad_norm:.3e} | "
               f"lr={lr_now:.2e} | "
               f"⟨|x−φ(x)|⟩ = {disp:.4e}")
 
     # Store the loss history
-    pt.save(pt.tensor(losses),
-            os.path.join(store_directory or ".", "sinkhorn_adam_losses.pt"))
+    pt.save(pt.tensor(losses), os.path.join(store_directory or ".", "sinkhorn_adam_losses.pt"))
 
-    return X_param.detach().cpu(), losses
+    return X_param.detach().cpu(), losses, grad_norms
