@@ -156,7 +156,7 @@ def sinkhorn_adam(
     print(f"[INFO] blur ε = {eps:.4e}")
     print(f"[INFO] Initial Loss", sinkhorn_loss(X_param, timestepper, loss_fn, replicas).item())
 
-    lr_decrease_step = 250
+    lr_decrease_step = 100
     lr_decrease_factor = 0.5
     opt = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
     scheduler = pt.optim.lr_scheduler.StepLR(opt, lr_decrease_step, lr_decrease_factor)

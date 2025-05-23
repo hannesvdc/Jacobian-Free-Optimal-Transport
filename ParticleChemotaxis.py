@@ -29,6 +29,10 @@ def sampleInvariantMCMC(mu, N):
     return samples
 
 def step(X, S, dS, chi, D, dt, device, dtype):
+    # Check initial boundary conditions
+    X = pt.where(X < -L, 2 * (-L) - X, X)
+    X = pt.where(X > L, 2 * L - X, X)
+    
     # EM Step
     X = X + chi(S(X)) * dS(X) * dt + math.sqrt(2.0 * D * dt) * pt.normal(0.0, 1.0, X.shape, device=device, dtype=dtype)
     
@@ -78,7 +82,7 @@ def timeEvolution():
     plt.legend()
     plt.show()
 
-def steadyStateSinkhornSGD(optimizer):
+def steadyStateSinkhorn(optimizer):
     device = pt.device("mps")
     dtype = pt.float32
     store_directory = "/Users/hannesvdc/Research/Projects/Jacobian-Free-Optimal-Transport/Results/"
@@ -101,12 +105,11 @@ def steadyStateSinkhornSGD(optimizer):
     # Do optimization to find the steady-state particles
     epochs = 5000
     batch_size = 10000
+    lr = 1.0
     replicas = 10
     if optimizer == 'SGD':
-        lr = 1.0
         X_inf, losses = sopt.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
     elif optimizer == 'Adam':
-        lr = 0.1
         X_inf, losses = sopt.sinkhorn_adam(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
 
     # Analytic Steady-State for the given chi(S)
@@ -199,7 +202,7 @@ if __name__ == '__main__':
     if args.experiment == 'evolution':
         timeEvolution()
     elif args.experiment == 'sinkhorn':
-        steadyStateSinkhornSGD(args.optimizer)
+        steadyStateSinkhorn(args.optimizer)
     elif args.experiment == 'test':
         testSinkhornSGDSteadyState()
     else:
