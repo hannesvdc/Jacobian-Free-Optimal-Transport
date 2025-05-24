@@ -103,13 +103,14 @@ def steadyStateSinkhorn(optimizer):
     stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
 
     # Do optimization to find the steady-state particles
-    epochs = 5000
     batch_size = 10000
     lr = 1.0
     replicas = 10
     if optimizer == 'SGD':
+        epochs = 5000
         X_inf, losses = sopt.sinkhorn_sgd(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
     elif optimizer == 'Adam':
+        epochs = 1500
         X_inf, losses, grad_norms = sopt.sinkhorn_adam(X0, stepper, epochs, batch_size, lr, replicas, device=device, store_directory=store_directory)
 
     # Analytic Steady-State for the given chi(S)
