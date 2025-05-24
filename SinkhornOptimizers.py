@@ -196,11 +196,6 @@ def sinkhorn_adam(
             sched.step()
         lr_now = opt.param_groups[0]['lr']
 
-        # Start decreasing eps_blur every 500 epochs for hopefully improved convergence.
-        if epoch % 500 == 0 and epoch >= 1500:
-            eps = 0.5 * eps
-            loss_fn = SamplesLoss("sinkhorn", p=2, blur=eps, debias=True, backend="tensorized", scaling=0.9)
-
         # ---- inexpensive displacement diagnostic ----------------
         with pt.no_grad():
             probe_idx = pt.randperm(N, device=device)[:min(batch_size, N)]
