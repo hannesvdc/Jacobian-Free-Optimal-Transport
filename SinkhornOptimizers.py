@@ -28,7 +28,7 @@ def choose_eps_blur(x: pt.Tensor,
 # --------------------------------------------------------------------------
 def sinkhorn_loss(
     x_batch: pt.Tensor,                  # (B, d) – requires_grad=False
-    timestepper,
+    batched_timestepper,
     loss_fn,
     replicas: int = 1,
 ) -> tuple[pt.Tensor, pt.Tensor]:
@@ -39,7 +39,8 @@ def sinkhorn_loss(
     """
 
     # Monte-Carlo average over images of the batch
-    y = pt.stack([timestepper(x_batch) for _ in range(replicas)]).mean(0).detach()
+    x_input = x_batch.repeat(replicas, 1, 1)  # Shape: (replicas, N, d)
+    y = batched_timestepper(x_input).mean(0).detach()
 
     loss = 0.5 * loss_fn(x_batch, y)
     return loss
@@ -147,6 +148,7 @@ def sinkhorn_adam(
     X_final  : (N,d) tensor on CPU
     losses   : list of per-batch ½ S_ε values
     """
+    batched_timestepper = pt.vmap(timestepper, randomness="different")
     X_param = pt.nn.Parameter(X0.to(device).clone())
     N, d    = X_param.shape
 
@@ -154,7 +156,7 @@ def sinkhorn_adam(
     loss_fn = SamplesLoss("sinkhorn", p=2, blur=eps,
                           debias=True, backend="tensorized", scaling=0.9)
     print(f"[INFO] blur ε = {eps:.4e}")
-    print(f"[INFO] Initial Loss", sinkhorn_loss(X_param, timestepper, loss_fn, replicas).item())
+    print(f"[INFO] Initial Loss", sinkhorn_loss(X_param, batched_timestepper, loss_fn, replicas).item())
 
     lr_now = lr
     lr_decrease_step = 100
@@ -181,7 +183,7 @@ def sinkhorn_adam(
 
             # ----- forward + backward ----------------------------
             opt.zero_grad()
-            loss = sinkhorn_loss(x_sub, timestepper, loss_fn, replicas)
+            loss = sinkhorn_loss(x_sub, batched_timestepper, loss_fn, replicas)
 
             # Only gradients for rows in idx are non-zero; adam sees them
             loss.backward() # autograd on full parameter
@@ -206,6 +208,6 @@ def sinkhorn_adam(
                 f"⟨|x−φ(x)|⟩ = {disp:.4e}")
 
     # Store the loss history
-    pt.save(pt.tensor(losses), os.path.join(store_directory or ".", "sinkhorn_adam_losses.pt"))
+    pt.save(pt.stack((pt.tensor(losses), pt.tensor(grad_norms))), os.path.join(store_directory or ".", "sinkhorn_adam_losses.pt"))
 
     return X_param.detach().cpu(), losses, grad_norms

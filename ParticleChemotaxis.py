@@ -1,3 +1,4 @@
+import os
 import torch as pt
 import math
 from geomloss import SamplesLoss
@@ -138,6 +139,54 @@ def steadyStateSinkhorn(optimizer):
     
     plt.show()
 
+def plotSinkhornSteadyState(optimizer):
+    store_directory = "./Results/"
+    filename = os.path.join(store_directory, "particles_adam.pt")
+    particles = pt.load(filename)
+    N = len(particles)
+
+    losses_filename = os.path.join(store_directory, "sinkhorn_adam_losses.pt")
+    losses_and_grads = pt.load(losses_filename)
+    if losses_and_grads.shape[0] < losses_and_grads.shape[1]:
+        losses = losses_and_grads[0,:]
+        grad_norms = losses_and_grads[1,:]
+    else:
+        losses = losses_and_grads[:,0]
+        grad_norms = losses_and_grads[:,1]
+    epochs = len(losses)
+
+    # Get initial distribution for plotting purposes
+    N = 10**4
+    X0 = pt.normal(0.0, 1.0, (N,), requires_grad=False)
+
+    # Analytic Steady-State for the given chi(S)
+    S = lambda x: pt.tanh(x)
+    D = 0.1
+    x_array = pt.linspace(-L, L, 1000)
+    dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
+    Z = pt.trapz(dist, x_array)
+    dist = dist / Z
+
+    # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
+    batch_counter = pt.linspace(0.0, epochs, len(losses))
+    plt.semilogy(batch_counter, losses, label='Sinkhorn Divergence')
+    plt.semilogy(batch_counter, grad_norms, label='Sinkhorn Divergence Gradient')
+    plt.xlabel('Batch')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.legend()
+
+    # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
+    plt.hist(X0, density=True, bins=int(math.sqrt(N)), label='Initial Particles')
+    plt.hist(particles, density=True, bins=int(math.sqrt(N)), label='Optimized Particles')
+    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
+    plt.xlabel('x')
+    plt.ylabel(r'$\mu(x)$')
+    plt.grid(True)
+    plt.legend()
+    
+    plt.show()
+
 def testSinkhornSGDSteadyState():
     # Physical functions defining the problem
     S = lambda x: pt.tanh(x)
@@ -205,6 +254,8 @@ if __name__ == '__main__':
         timeEvolution()
     elif args.experiment == 'sinkhorn':
         steadyStateSinkhorn(args.optimizer)
+    elif args.experiment == 'plot':
+        plotSinkhornSteadyState(args.optimizer)
     elif args.experiment == 'test':
         testSinkhornSGDSteadyState()
     else:
