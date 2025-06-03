@@ -143,10 +143,10 @@ def calculateSteadyState():
     stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
 
     # Do optimization to find the steady-state particles
-    batch_size = 10000
-    lr = 1.e-2
+    batch_size = N
+    lr = 1.e-1
     replicas = 10
-    epochs = 2500
+    epochs = 15000
     X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, replicas, device, store_directory=store_directory)
 
     # Analytic Steady-State for the given chi(S)

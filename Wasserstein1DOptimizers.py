@@ -56,6 +56,10 @@ def wasserstein_adam(
 
     print(f"[INFO] Initial Loss", w2_loss_1d(X_param, batched_timestepper, replicas).item())
 
+    lr_now = lr
+    lr_decrease_step = 2500
+    lr_decrease_factor = 0.1
+    sched = pt.optim.lr_scheduler.StepLR(opt, step_size=lr_decrease_step, gamma=lr_decrease_factor)
     opt = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
     def save_particles(epoch):
         if store_directory is None: return
@@ -87,6 +91,7 @@ def wasserstein_adam(
             grad_norms.append(grad_norm)
         
         # ---- Update the learning rate after each epoch ----------
+        sched.step()
         lr_now = opt.param_groups[0]['lr']
 
         # ---- inexpensive displacement diagnostic ----------------
