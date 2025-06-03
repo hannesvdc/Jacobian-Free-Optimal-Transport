@@ -117,6 +117,7 @@ def test_w2_helpers():
         y_plot = stepper(X0)
         plt.hist(X0.cpu().numpy(), bins=80, alpha=0.5, label="X(t)", density=True)
         plt.hist(y_plot.cpu().numpy(), bins=80, alpha=0.5, label="φ_T(X)", density=True)
+        plt.xlim((-10, 10))
         plt.title("Mini-batch before vs. after φ_T")
         plt.legend()
         plt.show()

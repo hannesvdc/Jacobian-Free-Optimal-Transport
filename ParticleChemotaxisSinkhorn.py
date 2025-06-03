@@ -41,7 +41,6 @@ def step(X, S, dS, chi, D, dt, device, dtype):
     X = pt.where(X < -L, 2 * (-L) - X, X)
     X = pt.where(X > L, 2 * L - X, X)
 
-    # Return OT of X
     return X
 
 def timestepper(X, S, dS, chi, D, dt, T, device, dtype, verbose=False):
@@ -76,10 +75,12 @@ def timeEvolution():
     dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
     Z = pt.trapz(dist, x_array)
     dist = dist / Z
+    print(x_array)
+    print(dist)
 
     # Plot the particle histogram and compare it to the analytic steady-state
-    plt.hist(X_inf, density=True, bins=int(math.sqrt(N)), label='Particles')
-    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
+    plt.hist(X_inf.cpu().numpy(), density=True, bins=int(math.sqrt(N)), label='Particles')
+    plt.plot(x_array.numpy(), dist.numpy(), linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.grid(True)
