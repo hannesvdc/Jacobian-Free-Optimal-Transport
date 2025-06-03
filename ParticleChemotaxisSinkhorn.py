@@ -53,6 +53,9 @@ def timestepper(X, S, dS, chi, D, dt, T, device, dtype, verbose=False):
     return X
 
 def timeEvolution():
+    device = pt.device("mps")
+    dtype = pt.float32
+
     # Physical functions defining the problem
     S = lambda x: pt.tanh(x)
     dS = lambda x: 1.0 / pt.cosh(x)**2
@@ -61,12 +64,12 @@ def timeEvolution():
 
     # Initial condition - standard normal Gaussian
     N = 10**6
-    X0 = pt.normal(0.0, 1.0, (N,1))
+    X0 = pt.normal(0.0, 1.0, (N,1), device=device, dtype=dtype, requires_grad=False)
 
     # Do timestepping
     dt = 1.e-3
     T = 500.0
-    X_inf = timestepper(X0, S, dS, chi, D, dt, T, verbose=True)
+    X_inf = timestepper(X0, S, dS, chi, D, dt, T, device, dtype, verbose=True)
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
@@ -256,7 +259,5 @@ if __name__ == '__main__':
         steadyStateSinkhorn(args.optimizer)
     elif args.experiment == 'plot':
         plotSinkhornSteadyState(args.optimizer)
-    elif args.experiment == 'test':
-        testSinkhornSGDSteadyState()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'sinkhorn'.")
