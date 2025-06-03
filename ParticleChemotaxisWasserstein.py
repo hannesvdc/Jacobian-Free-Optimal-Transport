@@ -144,9 +144,9 @@ def calculateSteadyState():
 
     # Do optimization to find the steady-state particles
     batch_size = 10000
-    lr = 1.e-1
+    lr = 1.e-2
     replicas = 10
-    epochs = 1500
+    epochs = 2500
     X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, replicas, device, store_directory=store_directory)
 
     # Analytic Steady-State for the given chi(S)
