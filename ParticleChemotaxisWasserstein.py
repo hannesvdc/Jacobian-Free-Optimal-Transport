@@ -78,8 +78,8 @@ def timeEvolution():
     dist = dist / Z
 
     # Plot the particle histogram and compare it to the analytic steady-state
-    plt.hist(X_inf.cpu(), density=True, bins=int(math.sqrt(N)), label='Particles')
-    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
+    plt.hist(X_inf.cpu().numpy(), density=True, bins=int(math.sqrt(N)), label='Particles')
+    plt.plot(x_array.numpy(), dist.numpy(), linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.grid(True)
@@ -144,7 +144,7 @@ def calculateSteadyState():
 
     # Do optimization to find the steady-state particles
     batch_size = 10000
-    lr = 1.e-2
+    lr = 1.e-1
     replicas = 10
     epochs = 1500
     X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, replicas, device, store_directory=store_directory)
@@ -165,8 +165,8 @@ def calculateSteadyState():
     plt.legend()
 
     plt.figure()
-    plt.hist(X_inf, density=True, bins=int(math.sqrt(N)), label='Particles')
-    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
+    plt.hist(X_inf.numpy(), density=True, bins=int(math.sqrt(N)), label='Particles')
+    plt.plot(x_array.numpy(), dist.numpy(), linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.grid(True)

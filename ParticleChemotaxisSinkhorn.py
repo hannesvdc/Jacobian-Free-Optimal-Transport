@@ -75,8 +75,6 @@ def timeEvolution():
     dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
     Z = pt.trapz(dist, x_array)
     dist = dist / Z
-    print(x_array)
-    print(dist)
 
     # Plot the particle histogram and compare it to the analytic steady-state
     plt.hist(X_inf.cpu().numpy(), density=True, bins=int(math.sqrt(N)), label='Particles')
