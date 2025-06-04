@@ -100,7 +100,8 @@ def test_w2_helpers():
 
     # Initial distribution of particles (standard normal Gaussian)
     N = 10**4
-    X0 = sampleInvariantMCMC(dist, N)
+    X0 = pt.Tensor(sampleInvariantMCMC(dist, N)).reshape((N,1)).to(device=device, dtype=dtype)
+    print(X0.shape)
 
     # Biuld the timestepper
     dt = 1.e-3

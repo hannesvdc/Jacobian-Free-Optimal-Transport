@@ -8,25 +8,27 @@ import torch as pt
 #  ½ W₂² loss  (no autograd)      — averaging over replicas
 # ----------------------------------------------------------------
 def w2_loss_1d(
-    x: pt.Tensor,        # (B,1)   requires_grad = False
-    batched_timestepper, # (L,B,1) -> (L,B,1)
-    replicas: int = 1,
+    x: pt.Tensor,  # (B,1)   requires_grad = False
+    timestepper,   # (B,1) -> (B,1)
 ) -> pt.Tensor:
     """
-    Returns the scalar ½ W₂²(X , φ_T(X)) for a single mini-batch.
+    Returns the scalar ½ W₂²(X , φ_T(X)) for a single mini-batch.
     * x_batch is left on whatever device/dtype the caller uses.
     * batched_timestepper must accept an input of shape (L,B,1)
       where L = replicas, and return the same shape.
     """
-    # 1) push L replicas through φ_T and average
-    x_rep = x.repeat(replicas, 1, 1)          # (L,B,1)
-    y_avg = batched_timestepper(x_rep).mean(0).detach()  # (B,1)
+    # 1) push the batch through φ_T once
+    y = timestepper(x).detach()   # (B, 1)
+    #x_rep = x.repeat(replicas, 1, 1)          # (L,B,1)
+    #y_avg = batched_timestepper(x_rep).mean(0).detach()  # (B,1)
 
     # 2) sort both clouds along the particle axis
-    idx_x = x[:, 0].argsort()                 # (B,)
-    idx_y = y_avg[:, 0].argsort()             # (B,)
+    idx_x = x[:, 0].argsort()             # (B,)
+    #idx_y = y_avg[:, 0].argsort()        # (B,)
+    idx_y = y[:, 0].argsort()
+    diff  = x[idx_x, 0] - y[idx_y, 0]     # (B,)
 
-    diff  = x[idx_x, 0] - y_avg[idx_y, 0]     # (B,)
+    # 3) ½ ‖ · ‖² averaged over particles
     loss  = 0.5 * diff.pow(2).mean()          # scalar
     return loss
 
@@ -49,12 +51,10 @@ def wasserstein_adam(
     X_final  : (N,d) tensor on CPU
     losses   : list of per-batch ½ S_ε values
     """
-    replicas = 1
-    batched_timestepper = pt.vmap(timestepper, randomness="different")
     X_param = pt.nn.Parameter(X0.clone())
     N, d    = X_param.shape
 
-    print(f"[INFO] Initial Loss", w2_loss_1d(X_param, batched_timestepper, replicas).item())
+    print(f"[INFO] Initial Loss", w2_loss_1d(X_param, timestepper).item())
 
     lr_now = lr
     lr_decrease_step = 2500
@@ -80,7 +80,7 @@ def wasserstein_adam(
 
             # ----- forward + backward ----------------------------
             opt.zero_grad()
-            loss = w2_loss_1d(x_sub, batched_timestepper, replicas)
+            loss = w2_loss_1d(x_sub, timestepper)
 
             # Only gradients for rows in idx are non-zero; adam sees them
             loss.backward() # autograd on full parameter
@@ -109,8 +109,6 @@ def wasserstein_adam(
     return X_param.detach().cpu(), losses, grad_norms
 
 def _call_loss(X0: pt.Tensor, timestepper, batch_size: int, device: str | pt.device = "mps"):
-    replicas = 1
-    batched_timestepper = pt.vmap(timestepper, randomness="different")
 
     # Act as if we're doing minibatching
     N, d = X0.shape
@@ -119,6 +117,6 @@ def _call_loss(X0: pt.Tensor, timestepper, batch_size: int, device: str | pt.dev
     x_sub = X0[idx]
 
     # Call the loss function
-    loss = w2_loss_1d(x_sub, batched_timestepper, replicas)
+    loss = w2_loss_1d(x_sub, timestepper)
 
     return loss
