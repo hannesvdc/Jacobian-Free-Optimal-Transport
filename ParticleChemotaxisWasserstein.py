@@ -103,14 +103,13 @@ def test_w2_helpers():
     X0 = sampleInvariantMCMC(dist, N)
 
     # Biuld the timestepper
-    replicas = 1
     dt = 1.e-3
     T_psi = 1.0
     stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
 
     # loss only
     batch_size = N
-    loss_val = wopt._call_loss(X0, stepper, batch_size, replicas, device)
+    loss_val = wopt._call_loss(X0, stepper, batch_size, device)
     print(f"½ W₂²  (call_loss)     : {loss_val.item():.3e}")
 
     # Plot histogram of the push-forward versus X
@@ -148,9 +147,8 @@ def calculateSteadyState():
     # Do optimization to find the steady-state particles
     batch_size = N
     lr = 1.e-1
-    replicas = 1
     epochs = 15000
-    X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, replicas, device, store_directory=store_directory)
+    X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, device, store_directory=store_directory)
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)

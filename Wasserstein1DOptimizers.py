@@ -39,7 +39,6 @@ def wasserstein_adam(
     n_epochs: int,
     batch_size: int,
     lr: float,           # Adam base learning-rate
-    replicas: int,
     device=pt.device("mps"),
     store_directory: str | None = None):
     """
@@ -50,6 +49,7 @@ def wasserstein_adam(
     X_final  : (N,d) tensor on CPU
     losses   : list of per-batch ½ S_ε values
     """
+    replicas = 1
     batched_timestepper = pt.vmap(timestepper, randomness="different")
     X_param = pt.nn.Parameter(X0.clone())
     N, d    = X_param.shape
@@ -108,7 +108,8 @@ def wasserstein_adam(
 
     return X_param.detach().cpu(), losses, grad_norms
 
-def _call_loss(X0: pt.Tensor, timestepper, batch_size: int, replicas: int, device: str | pt.device = "mps"):
+def _call_loss(X0: pt.Tensor, timestepper, batch_size: int, device: str | pt.device = "mps"):
+    replicas = 1
     batched_timestepper = pt.vmap(timestepper, randomness="different")
 
     # Act as if we're doing minibatching
