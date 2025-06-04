@@ -52,7 +52,7 @@ def timestepper(X, S, dS, chi, D, dt, T, device, dtype, verbose=False):
         X = step(X, S, dS, chi, D, dt, device, dtype)
     return X
 
-def timeEvolution():
+def timeEvolution(_return=False):
     device = pt.device("mps")
     dtype = pt.float32
 
@@ -70,6 +70,8 @@ def timeEvolution():
     dt = 1.e-3
     T = 500.0
     X_inf = timestepper(X0, S, dS, chi, D, dt, T, device, dtype, verbose=True)
+    if _return:
+        return X_inf
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
@@ -99,10 +101,10 @@ def test_w2_helpers():
 
     # Initial distribution of particles (standard normal Gaussian)
     N = 10**4
-    X0 = pt.normal(0.0, 1.0, (N,1), device=device, dtype=dtype, requires_grad=False)
+    X0 = timeEvolution(_return=True)
 
     # Biuld the timestepper
-    replicas = 4
+    replicas = 1
     dt = 1.e-3
     T_psi = 1.0
     stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
@@ -133,9 +135,11 @@ def calculateSteadyState():
     chi = lambda s: 1 + 0.5 * s**2
     D = 0.1
 
-    # Initial condition - Gaussian (mean 0, stdev 1)
+    # Initial condition - Gaussian (mean 5, stdev 2)
     N = 10**4
-    X0 = pt.normal(0.0, 1.0, (N,1), device=device, dtype=dtype, requires_grad=False)
+    X0 = pt.normal(5.0, 2.0, (N,1), device=device, dtype=dtype, requires_grad=False)
+    X0 = pt.where(X0 < -L, 2 * (-L) - X0, X0)
+    X0 = pt.where(X0 > L, 2 * L - X0, X0)
 
     # Build the timestepper function
     dt = 1.e-3
@@ -145,7 +149,7 @@ def calculateSteadyState():
     # Do optimization to find the steady-state particles
     batch_size = N
     lr = 1.e-1
-    replicas = 10
+    replicas = 1
     epochs = 15000
     X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, replicas, device, store_directory=store_directory)
 
@@ -165,7 +169,7 @@ def calculateSteadyState():
     plt.legend()
 
     plt.figure()
-    plt.hist(X_inf.numpy(), density=True, bins=int(math.sqrt(N)), label='Particles')
+    plt.hist(X_inf.numpy(), density=True, bins=int(math.sqrt(N)), label='Adam Particles')
     plt.plot(x_array.numpy(), dist.numpy(), linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')

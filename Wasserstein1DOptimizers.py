@@ -59,8 +59,8 @@ def wasserstein_adam(
     lr_now = lr
     lr_decrease_step = 2500
     lr_decrease_factor = 0.1
-    sched = pt.optim.lr_scheduler.StepLR(opt, step_size=lr_decrease_step, gamma=lr_decrease_factor)
     opt = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
+    sched = pt.optim.lr_scheduler.StepLR(opt, step_size=lr_decrease_step, gamma=lr_decrease_factor)
     def save_particles(epoch):
         if store_directory is None: return
         pt.save(X_param.detach().cpu(), os.path.join(store_directory, f"particles_wasserstein_adam.pt"))
