@@ -135,7 +135,7 @@ def calculateSteadyState():
     D = 0.1
 
     # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions
-    N = 10**4
+    N = 10**5
     X0 = pt.normal(5.0, 2.0, (N,1), device=device, dtype=dtype, requires_grad=False)
     X0 = pt.where(X0 < -L, 2 * (-L) - X0, X0)
     X0 = pt.where(X0 > L, 2 * L - X0, X0)
@@ -146,10 +146,15 @@ def calculateSteadyState():
     stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
 
     # Do optimization to find the steady-state particles
+    # These parameters work really well!! - 150s of total integration time 
+    # versus 500s for regular timestepping (see time_evolution code).
     batch_size = N
-    lr = 1.e-2
-    epochs = 2500
-    X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, device, store_directory=None)
+    lr = 1.e-1
+    lr_decrease_factor = 0.1
+    lr_decrease_step = 100
+    n_lrs = 3
+    epochs = n_lrs * lr_decrease_step
+    X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, lr_decrease_factor, lr_decrease_step, device, store_directory=None)
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)

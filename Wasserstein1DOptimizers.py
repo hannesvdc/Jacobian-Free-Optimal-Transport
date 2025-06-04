@@ -34,6 +34,8 @@ def wasserstein_adam(
     n_epochs: int,
     batch_size: int,
     lr: float,
+    lr_decrease_factor: float,
+    lr_decrease_step: int, 
     device=pt.device("mps"),
     store_directory: str | None = None):
     """
@@ -51,8 +53,6 @@ def wasserstein_adam(
     print(f"[INFO] Initial Loss", w2_loss_1d(X_param, timestepper).item())
 
     lr_now = lr
-    lr_decrease_step = 2500
-    lr_decrease_factor = 0.1
     opt = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
     sched = pt.optim.lr_scheduler.StepLR(opt, step_size=lr_decrease_step, gamma=lr_decrease_factor)
     def save_particles(epoch):
