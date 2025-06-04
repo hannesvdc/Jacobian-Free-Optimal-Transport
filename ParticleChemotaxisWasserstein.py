@@ -211,6 +211,13 @@ def plotSteadyState():
     batch_counter = pt.linspace(0.0, epochs, len(losses))
     plt.semilogy(batch_counter, losses, label=r'$\frac{1}{2}W_2^2(X, \phi_T(X))$')
     plt.semilogy(batch_counter, grad_norms, label=r'$\nabla_X \frac{1}{2}W_2^2(X, \phi_T(X))$')
+    milestones = [2_500, 5_000, 7_500, 10_000, 12_500]
+    lrs = [1.e-2, 1.e-3, 1.e-4, 1.e-5, 1.e-6]
+    y_top = losses.max().item()          # highest point on the log plot
+    y_txt = y_top * 0.8   
+    for m, lr in zip(milestones, lrs):
+        plt.axvline(m, color='gray', linewidth=5, ls='--', lw=0.8, alpha=0.9)
+        plt.text(m, y_txt, f"lr={lr:g}", ha="right", va="bottom", color="black", fontsize=8)
     plt.xlabel('Batch')
     plt.ylabel('Loss')
     plt.title('Wasserstein Loss and Gradient')
