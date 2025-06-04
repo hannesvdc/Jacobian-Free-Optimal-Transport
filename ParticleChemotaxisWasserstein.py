@@ -98,10 +98,10 @@ def test_w2_helpers():
     D = 0.1
     dist = lambda x: pt.exp( (S(x) + S(x)**3 / 6.0) / D)
 
-    # Initial distribution of particles (standard normal Gaussian)
+    # Initial distribution of particles (Invariant Measure)
     N = 10**4
-    X0 = pt.Tensor(sampleInvariantMCMC(dist, N)).reshape((N,1)).to(device=device, dtype=dtype)
-    print(X0.shape)
+    X0_list = sampleInvariantMCMC(dist, N)
+    X0 = pt.Tensor(X0_list).reshape((N,1)).to(device=device, dtype=dtype)
 
     # Biuld the timestepper
     dt = 1.e-3
@@ -134,7 +134,7 @@ def calculateSteadyState():
     chi = lambda s: 1 + 0.5 * s**2
     D = 0.1
 
-    # Initial condition - Gaussian (mean 5, stdev 2)
+    # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions
     N = 10**4
     X0 = pt.normal(5.0, 2.0, (N,1), device=device, dtype=dtype, requires_grad=False)
     X0 = pt.where(X0 < -L, 2 * (-L) - X0, X0)
@@ -147,9 +147,9 @@ def calculateSteadyState():
 
     # Do optimization to find the steady-state particles
     batch_size = N
-    lr = 1.e-1
-    epochs = 15000
-    X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, device, store_directory=store_directory)
+    lr = 1.e-2
+    epochs = 2500
+    X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, device, store_directory=None)
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
