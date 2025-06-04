@@ -178,6 +178,58 @@ def calculateSteadyState():
     
     plt.show()
 
+def plotSteadyState():
+    store_directory = "./Results/"
+    filename = os.path.join(store_directory, "particles_wasserstein_adam.pt")
+    particles = pt.load(filename)
+    N = len(particles)
+
+    losses_filename = os.path.join(store_directory, "wasserstein_adam_losses.pt")
+    losses_and_grads = pt.load(losses_filename)
+    if losses_and_grads.shape[0] < losses_and_grads.shape[1]:
+        losses = losses_and_grads[0,:]
+        grad_norms = losses_and_grads[1,:]
+    else:
+        losses = losses_and_grads[:,0]
+        grad_norms = losses_and_grads[:,1]
+    epochs = len(losses)
+
+    # Get Samples from the Initial condition - Gaussian (mean 5, stdev 2) - for Plotting Purposes
+    N = 10**4
+    X0 = pt.normal(5.0, 2.0, (N,1), requires_grad=False)
+    X0 = pt.where(X0 < -L, 2 * (-L) - X0, X0)
+    X0 = pt.where(X0 > L, 2 * L - X0, X0)
+
+    # Analytic Steady-State for the given chi(S)
+    S = lambda x: pt.tanh(x)
+    D = 0.1
+    x_array = pt.linspace(-L, L, 1000)
+    dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
+    Z = pt.trapz(dist, x_array)
+    dist = dist / Z
+
+    # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
+    batch_counter = pt.linspace(0.0, epochs, len(losses))
+    plt.semilogy(batch_counter, losses, label=r'$\frac{1}{2}W_2^2(X, \phi_T(X))$')
+    plt.semilogy(batch_counter, grad_norms, label=r'$\nabla_X \frac{1}{2}W_2^2(X, \phi_T(X))$')
+    plt.xlabel('Batch')
+    plt.ylabel('Loss')
+    plt.title('Wasserstein Loss and Gradient')
+    plt.grid(True)
+    plt.legend()
+
+    # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
+    plt.figure()
+    plt.hist(X0, density=True, bins=int(math.sqrt(N)), alpha=0.6, color='tab:blue', label='Initial Particles')
+    plt.hist(particles, density=True, bins=int(math.sqrt(N)), alpha=0.6, color='tab:orange', label='Adam Optimized Particles')
+    plt.plot(x_array, dist, linestyle='--', linewidth=2, color='tab:red', label='Analytic Steady State')
+    plt.xlabel('x')
+    plt.ylabel(r'$\mu(x)$')
+    plt.grid(True)
+    plt.legend()
+    
+    plt.show()
+
 def parseArguments():
     import argparse
     parser = argparse.ArgumentParser(description="Run the Bimodal PDE simulation.")
@@ -195,9 +247,11 @@ if __name__ == '__main__':
     args = parseArguments()
     if args.experiment == 'evolution':
         timeEvolution()
-    elif args.experiment == 'test':
-        test_w2_helpers()
     elif args.experiment == 'steady-state':
         calculateSteadyState()
+    elif args.experiment == 'plot-steady-state':
+        plotSteadyState()
+    elif args.experiment == 'test':
+        test_w2_helpers()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'test', or 'steady-state'.")
