@@ -52,7 +52,7 @@ def timestepper(X, S, dS, chi, D, dt, T, device, dtype, verbose=False):
         X = step(X, S, dS, chi, D, dt, device, dtype)
     return X
 
-def timeEvolution(_return=False):
+def timeEvolution():
     device = pt.device("mps")
     dtype = pt.float32
 
@@ -70,8 +70,6 @@ def timeEvolution(_return=False):
     dt = 1.e-3
     T = 500.0
     X_inf = timestepper(X0, S, dS, chi, D, dt, T, device, dtype, verbose=True)
-    if _return:
-        return X_inf
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
@@ -98,10 +96,11 @@ def test_w2_helpers():
     dS = lambda x: 1.0 / pt.cosh(x)**2
     chi = lambda s: 1 + 0.5 * s**2
     D = 0.1
+    dist = lambda x: pt.exp( (S(x) + S(x)**3 / 6.0) / D)
 
     # Initial distribution of particles (standard normal Gaussian)
     N = 10**4
-    X0 = timeEvolution(_return=True)
+    X0 = sampleInvariantMCMC(dist, N)
 
     # Biuld the timestepper
     replicas = 1
@@ -127,7 +126,7 @@ def test_w2_helpers():
 def calculateSteadyState():
     device = pt.device("mps")
     dtype = pt.float32
-    store_directory = "/Users/hannesvdc/Research/Projects/Jacobian-Free-Optimal-Transport/Results/"
+    store_directory = "./Results/"
 
     # Physical functions defining the problem
     S = lambda x: pt.tanh(x)
