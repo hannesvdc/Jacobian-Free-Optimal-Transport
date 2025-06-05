@@ -1,7 +1,10 @@
 import os
 import gc
-import torch as pt
+
 import math
+import torch as pt
+import numpy as np
+import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 import Wasserstein1DOptimizers as wopt
@@ -29,7 +32,7 @@ def sampleInvariantMCMC(mu, N):
     print('Acceptance Rate', n_accepted / N)
     return samples
 
-def step(X, S, dS, chi, D, dt, device, dtype):
+def step(X : pt.Tensor, S, dS, chi, D, dt, device, dtype) -> pt.Tensor:
     # Check initial boundary conditions
     X = pt.where(X < -L, 2 * (-L) - X, X)
     X = pt.where(X > L, 2 * L - X, X)
@@ -44,7 +47,7 @@ def step(X, S, dS, chi, D, dt, device, dtype):
     # Return OT of X
     return X
 
-def timestepper(X, S, dS, chi, D, dt, T, device, dtype, verbose=False):
+def timestepper(X : pt.Tensor, S, dS, chi, D, dt, T, device, dtype, verbose=False) -> pt.Tensor:
     n_steps = int(T / dt)
     for n in range(n_steps):
         if verbose and n % 100 == 0:
@@ -101,7 +104,7 @@ def test_w2_helpers():
     # Initial distribution of particles (Invariant Measure)
     N = 10**4
     X0_list = sampleInvariantMCMC(dist, N)
-    X0 = pt.Tensor(X0_list).reshape((N,1)).to(device=device, dtype=dtype)
+    X0 = pt.tensor(X0_list).reshape((N,1)).to(device=device, dtype=dtype)
 
     # Biuld the timestepper
     dt = 1.e-3
@@ -123,7 +126,7 @@ def test_w2_helpers():
         plt.legend()
         plt.show()
 
-def calculateSteadyState():
+def calculateSteadyStateAdam():
     device = pt.device("mps")
     dtype = pt.float32
     store_directory = "./Results/"
@@ -154,7 +157,7 @@ def calculateSteadyState():
     lr_decrease_step = 100
     n_lrs = 3
     epochs = n_lrs * lr_decrease_step
-    X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, lr_decrease_factor, lr_decrease_step, device, store_directory=None)
+    X_inf, losses, grad_norms = wopt.wasserstein_adam(X0, stepper, epochs, batch_size, lr, lr_decrease_factor, lr_decrease_step, device, store_directory=store_directory)
 
     # Analytic Steady-State for the given chi(S)
     x_array = pt.linspace(-L, L, 1000)
@@ -184,14 +187,83 @@ def calculateSteadyState():
     
     plt.show()
 
+def calculateSteadyStateNewtonKrylov():
+    """
+    This function uses scipy's newton_krylov to solve \\nabla_X|A 1/2 W_2^2(X, \\phi_T(X)) = 0. 
+    This is obviously equivalent to minimizing W_2^2(X, \\phi_T(X)). We only use the
+    preconditioned gradient - just as with the Adam optimizer.
+
+    Because of scipy, this is a numpy-only function. It internally calls w2_loss_1d in pytorch
+    language, but we need to explicitely take care of conversions. Also, this is a CPU function
+    because numpy does not provide support for the Apple Neural Engine.
+    """
+    store_directory = "./Results/"
+
+    # Physical functions defining the problem. These have to be torch functions 
+    # because they are called in the timesteper.
+    S = lambda x: pt.tanh(x)
+    dS = lambda x: 1.0 / pt.cosh(x)**2
+    chi = lambda s: 1 + 0.5 * s**2
+    D = 0.1
+
+    # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions. Numpy.
+    N = 10**4
+    x0 = np.random.normal(5.0, 2.0, N)
+    x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
+    x0 = np.where(x0 > L, 2 * L - x0, x0)
+
+    # Define the Newton-Krylov objective function F(x). Input and output are numpy arrays!
+    # First build the timestepper which takes in torch tensors!
+    dt = 1.e-3
+    T_psi = 1.0
+    device = pt.device('cpu')
+    dtype = pt.float64
+    def stepper(X : pt.Tensor) -> pt.Tensor:
+        return timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
+    def F(x: np.ndarray) -> np.ndarray:
+        # Create a torch tensor from x (make sure to copy)
+        X = pt.tensor(x, device=device, dtype=dtype, requires_grad=True).reshape((N,1))
+
+        # Compute the loss
+        loss = wopt.w2_loss_1d(X, stepper)
+        print('loss', loss.item())
+
+        # Compute gradient w.r.t. X
+        grad, = pt.autograd.grad(loss, X)
+
+        # Return only the gradient in numpy format. Copy just to be sure
+        return grad.detach().cpu().numpy().copy()[:,0]
+
+    # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
+    rdiff = 1.e-1 # the epsilon parameter
+    try:
+        x_inf = opt.newton_krylov(F, x0, maxiter=25, rdiff=rdiff, line_search=None, verbose=True)
+    except opt.NoConvergence as e:
+        x_inf = e.args[0]
+
+    # Plot the steady-state and the analytic steady-state
+    x_array = np.linspace(-L, L, 1000)
+    dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
+    dist = dist / np.trapz(dist, x_array)
+
+    plt.figure()
+    plt.hist(x_inf, density=True, bins=int(math.sqrt(N)), label='Adam Particles')
+    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
+    plt.xlabel('x')
+    plt.ylabel(r'$\mu(x)$')
+    plt.grid(True)
+    plt.legend()
+    
+    plt.show()
+
 def plotSteadyState():
     store_directory = "./Results/"
     filename = os.path.join(store_directory, "particles_wasserstein_adam.pt")
-    particles = pt.load(filename)
+    particles = pt.load(filename, weights_only=True)
     N = len(particles)
 
     losses_filename = os.path.join(store_directory, "wasserstein_adam_losses.pt")
-    losses_and_grads = pt.load(losses_filename)
+    losses_and_grads = pt.load(losses_filename, weights_only=True)
     if losses_and_grads.shape[0] < losses_and_grads.shape[1]:
         losses = losses_and_grads[0,:]
         grad_norms = losses_and_grads[1,:]
@@ -218,13 +290,12 @@ def plotSteadyState():
     batch_counter = pt.linspace(0.0, epochs, len(losses))
     plt.semilogy(batch_counter, losses, label=r'$\frac{1}{2}W_2^2(X, \phi_T(X))$')
     plt.semilogy(batch_counter, grad_norms, label=r'$\nabla_X \frac{1}{2}W_2^2(X, \phi_T(X))$')
-    milestones = [2_500, 5_000, 7_500, 10_000, 12_500]
     lrs = [1.e-2, 1.e-3, 1.e-4, 1.e-5, 1.e-6]
     y_top = losses.max().item()          # highest point on the log plot
     y_txt = y_top * 0.8   
-    for m, lr in zip(milestones, lrs):
-        plt.axvline(m, color='gray', linewidth=5, ls='--', lw=0.8, alpha=0.9)
-        plt.text(m, y_txt, f"lr={lr:g}", ha="right", va="bottom", color="black", fontsize=8)
+    #for m, lr in zip(milestones, lrs):
+    #    plt.axvline(m, color='gray', linewidth=5, ls='--', lw=0.8, alpha=0.9)
+    #    plt.text(m, y_txt, f"lr={lr:g}", ha="right", va="bottom", color="black", fontsize=8)
     plt.xlabel('Batch')
     plt.ylabel('Loss')
     plt.title('Wasserstein Loss and Gradient')
@@ -253,6 +324,13 @@ def parseArguments():
         dest='experiment',
         help="Specify the experiment to run (e.g., 'evolution', 'test', or 'steady-state')."
     )
+    parser.add_argument(
+        '--optimizer',
+        type=str,
+        required=False,
+        dest='optimizer',
+        help="Specify the optimizer to use, e.g. adam or newton_krylov."
+    )
     args = parser.parse_args()
     return args
 
@@ -261,7 +339,12 @@ if __name__ == '__main__':
     if args.experiment == 'evolution':
         timeEvolution()
     elif args.experiment == 'steady-state':
-        calculateSteadyState()
+        if args.optimizer == 'adam':
+            calculateSteadyStateAdam()
+        elif args.optimizer == 'newton_krylov':
+            calculateSteadyStateNewtonKrylov()
+        else:
+            print('This optimizer is not supported.')
     elif args.experiment == 'plot-steady-state':
         plotSteadyState()
     elif args.experiment == 'test':
