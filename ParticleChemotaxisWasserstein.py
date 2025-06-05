@@ -1,7 +1,7 @@
 import os
+import gc
 import torch as pt
 import math
-from geomloss import SamplesLoss
 import matplotlib.pyplot as plt
 
 import Wasserstein1DOptimizers as wopt
@@ -161,6 +161,9 @@ def calculateSteadyState():
     dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
     Z = pt.trapz(dist, x_array)
     dist = dist / Z
+
+    # Clean up memory
+    gc.collect()
 
     # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
     batch_counter = pt.linspace(0.0, epochs, len(losses))

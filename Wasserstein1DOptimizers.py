@@ -95,7 +95,8 @@ def wasserstein_adam(
                 f"⟨|x-φ(x)|⟩ = {disp:.4e}")
 
     # Store the loss history
-    pt.save(pt.stack((pt.tensor(losses), pt.tensor(grad_norms))), os.path.join(store_directory or ".", "wasserstein_adam_losses.pt"))
+    if store_directory is not None:
+        pt.save(pt.stack((pt.tensor(losses), pt.tensor(grad_norms))), os.path.join(store_directory or ".", "wasserstein_adam_losses.pt"))
 
     return X_param.detach().cpu(), losses, grad_norms
 
