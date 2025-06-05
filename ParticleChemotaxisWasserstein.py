@@ -207,7 +207,7 @@ def calculateSteadyStateNewtonKrylov():
     D = 0.1
 
     # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions. Numpy.
-    N = 10**4
+    N = 10**5
     x0 = np.random.normal(5.0, 2.0, N)
     x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
     x0 = np.where(x0 > L, 2 * L - x0, x0)
@@ -226,29 +226,30 @@ def calculateSteadyStateNewtonKrylov():
 
         # Compute the loss
         loss = wopt.w2_loss_1d(X, stepper)
-        print('loss', loss.item())
 
         # Compute gradient w.r.t. X
         grad, = pt.autograd.grad(loss, X)
+        print('loss', loss.item(), pt.norm(grad).item())
 
         # Return only the gradient in numpy format. Copy just to be sure
         return grad.detach().cpu().numpy().copy()[:,0]
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
-    rdiff = 1.e-1 # the epsilon parameter
+    rdiff = 1.e0 # the epsilon parameter
+    maxiter = 50
     try:
-        x_inf = opt.newton_krylov(F, x0, maxiter=25, rdiff=rdiff, line_search=None, verbose=True)
+        x_inf = opt.newton_krylov(F, x0, maxiter=maxiter, rdiff=rdiff, line_search=None, verbose=True)
     except opt.NoConvergence as e:
         x_inf = e.args[0]
 
     # Plot the steady-state and the analytic steady-state
-    x_array = np.linspace(-L, L, 1000)
-    dist = np.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
-    dist = dist / np.trapz(dist, x_array)
+    x_array = pt.linspace(-L, L, 1000)
+    dist = pt.exp( (S(x_array) + S(x_array)**3 / 6.0) / D)
+    dist = dist / pt.trapz(dist, x_array)
 
     plt.figure()
     plt.hist(x_inf, density=True, bins=int(math.sqrt(N)), label='Adam Particles')
-    plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
+    plt.plot(x_array.numpy(), dist.numpy(), linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.grid(True)
