@@ -124,7 +124,7 @@ def wasserstein_newton_krylov(
 
         # Compute gradient w.r.t. X
         grad, = pt.autograd.grad(loss, X)
-        print('loss', loss.item(), pt.norm(grad).item())
+        #print('loss', loss.item(), pt.norm(grad).item())
 
         # Return only the gradient in numpy format. Copy just to be sure
         return grad.detach().cpu().numpy().copy()[:,0]
@@ -136,7 +136,8 @@ def wasserstein_newton_krylov(
         X = pt.tensor(xk, device=device, dtype=dtype, requires_grad=True).reshape((N, 1))
 
         # Compute loss (we need to recompute it here, since fk is just the gradient)
-        loss = w2_loss_1d(X, timestepper).item()
+        with pt.no_grad():
+            loss = w2_loss_1d(X, timestepper).item()
         grad_norm = np.linalg.norm(fk)
 
         # Store values
@@ -144,7 +145,7 @@ def wasserstein_newton_krylov(
         grad_norms.append(grad_norm)
 
         # Print for monitoring
-        print(f"loss = {loss}, ‖grad‖ = {grad_norm}")
+        print(f"Epoch {len(losses)}: loss = {loss}, ‖grad‖ = {grad_norm}")
 
         # Store the particles
         if store_directory is not None:
@@ -155,7 +156,7 @@ def wasserstein_newton_krylov(
     line_search = 'wolfe'
     tol = 1.e-14
     try:
-        x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
+        x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=False)
     except opt.NoConvergence as e:
         x_inf = e.args[0]
 

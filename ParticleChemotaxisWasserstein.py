@@ -220,25 +220,6 @@ def calculateSteadyStateNewtonKrylov():
     dtype = pt.float64
     def stepper(X : pt.Tensor) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
-    # def F(x: np.ndarray) -> np.ndarray:
-    #     # Create a torch tensor from x (make sure to copy)
-    #     X = pt.tensor(x, device=device, dtype=dtype, requires_grad=True).reshape((N,1))
-
-    #     # Compute the loss
-    #     loss = wopt.w2_loss_1d(X, stepper)
-
-    #     # Compute gradient w.r.t. X
-    #     grad, = pt.autograd.grad(loss, X)
-    #     print('loss', loss.item(), pt.norm(grad).item())
-
-    #     # Return only the gradient in numpy format. Copy just to be sure
-    #     return grad.detach().cpu().numpy().copy()[:,0]
-
-    # # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
-    # try:
-    #     x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, verbose=True)
-    # except opt.NoConvergence as e:
-    #     x_inf = e.args[0]
     rdiff = 5.e-1 # the epsilon parameter
     maxiter = 25
     x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, device, dtype, store_directory)
@@ -258,6 +239,40 @@ def calculateSteadyStateNewtonKrylov():
     plt.legend()
     
     plt.show()
+
+def findOptimalNKParameters():
+    store_directory = "./Results/"
+
+    # Physical functions defining the problem. These have to be torch functions 
+    # because they are called in the timesteper.
+    S = lambda x: pt.tanh(x)
+    dS = lambda x: 1.0 / pt.cosh(x)**2
+    chi = lambda s: 1 + 0.5 * s**2
+    D = 0.1
+
+    # First build the timestepper which takes in torch tensors!
+    dt = 1.e-3
+    T_psi = 1.0
+    device = pt.device('cpu')
+    dtype = pt.float64
+    maxiter = 50
+    def stepper(X : pt.Tensor) -> pt.Tensor:
+        return timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
+
+    # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions. Numpy.
+    N_array = [10**4, 2*10**4, 4*10**4, 8*10**4, 10**5]
+    rdiff_array = [1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]
+    for N in N_array:
+        for rdiff in rdiff_array:
+            print('N =', N, ' rdiff =', rdiff)
+
+            x0 = np.random.normal(5.0, 2.0, N)
+            x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
+            x0 = np.where(x0 > L, 2 * L - x0, x0)
+
+            x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, device, dtype, store_directory)
+
+    # Storage is already taken care of, so nothing else to do!
 
 def plotSteadyState():
     store_directory = "./Results/"
@@ -348,6 +363,8 @@ if __name__ == '__main__':
             calculateSteadyStateNewtonKrylov()
         else:
             print('This optimizer is not supported.')
+    elif args.experiment == 'optimal_parameters':
+        findOptimalNKParameters()
     elif args.experiment == 'plot-steady-state':
         plotSteadyState()
     elif args.experiment == 'test':
