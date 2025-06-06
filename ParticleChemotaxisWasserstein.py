@@ -207,7 +207,7 @@ def calculateSteadyStateNewtonKrylov():
     D = 0.1
 
     # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions. Numpy.
-    N = 10**5
+    N = 10**4
     x0 = np.random.normal(5.0, 2.0, N)
     x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
     x0 = np.where(x0 > L, 2 * L - x0, x0)
@@ -235,10 +235,12 @@ def calculateSteadyStateNewtonKrylov():
         return grad.detach().cpu().numpy().copy()[:,0]
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
-    rdiff = 1.e0 # the epsilon parameter
-    maxiter = 50
+    rdiff = 5.e-1 # the epsilon parameter
+    maxiter = 25
+    line_search = 'wolfe'
+    tol = 1.e-14
     try:
-        x_inf = opt.newton_krylov(F, x0, maxiter=maxiter, rdiff=rdiff, line_search=None, verbose=True)
+        x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, verbose=True)
     except opt.NoConvergence as e:
         x_inf = e.args[0]
 
@@ -248,8 +250,9 @@ def calculateSteadyStateNewtonKrylov():
     dist = dist / pt.trapz(dist, x_array)
 
     plt.figure()
-    plt.hist(x_inf, density=True, bins=int(math.sqrt(N)), label='Adam Particles')
-    plt.plot(x_array.numpy(), dist.numpy(), linestyle='--', label='Analytic Steady State')
+    plt.hist(x0, density=True, bins=int(math.sqrt(N)), alpha=0.6, color='tab:blue', label='Initial Particles')
+    plt.hist(x_inf, density=True, bins=int(math.sqrt(N)), alpha=0.6, color='tab:orange', label='Newton-Krylov Optimized Particles')
+    plt.plot(x_array, dist, linestyle='--', linewidth=2, color='tab:red', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.grid(True)
