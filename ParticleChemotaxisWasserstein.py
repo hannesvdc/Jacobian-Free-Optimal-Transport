@@ -220,29 +220,28 @@ def calculateSteadyStateNewtonKrylov():
     dtype = pt.float64
     def stepper(X : pt.Tensor) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
-    def F(x: np.ndarray) -> np.ndarray:
-        # Create a torch tensor from x (make sure to copy)
-        X = pt.tensor(x, device=device, dtype=dtype, requires_grad=True).reshape((N,1))
+    # def F(x: np.ndarray) -> np.ndarray:
+    #     # Create a torch tensor from x (make sure to copy)
+    #     X = pt.tensor(x, device=device, dtype=dtype, requires_grad=True).reshape((N,1))
 
-        # Compute the loss
-        loss = wopt.w2_loss_1d(X, stepper)
+    #     # Compute the loss
+    #     loss = wopt.w2_loss_1d(X, stepper)
 
-        # Compute gradient w.r.t. X
-        grad, = pt.autograd.grad(loss, X)
-        print('loss', loss.item(), pt.norm(grad).item())
+    #     # Compute gradient w.r.t. X
+    #     grad, = pt.autograd.grad(loss, X)
+    #     print('loss', loss.item(), pt.norm(grad).item())
 
-        # Return only the gradient in numpy format. Copy just to be sure
-        return grad.detach().cpu().numpy().copy()[:,0]
+    #     # Return only the gradient in numpy format. Copy just to be sure
+    #     return grad.detach().cpu().numpy().copy()[:,0]
 
-    # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
+    # # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
+    # try:
+    #     x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, verbose=True)
+    # except opt.NoConvergence as e:
+    #     x_inf = e.args[0]
     rdiff = 5.e-1 # the epsilon parameter
     maxiter = 25
-    line_search = 'wolfe'
-    tol = 1.e-14
-    try:
-        x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, verbose=True)
-    except opt.NoConvergence as e:
-        x_inf = e.args[0]
+    x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, device, dtype, store_directory)
 
     # Plot the steady-state and the analytic steady-state
     x_array = pt.linspace(-L, L, 1000)

@@ -1,5 +1,7 @@
 import os
 import torch as pt
+import numpy as np
+import scipy.optimize as opt
 
 # ----------------------------------------------------------------
 #  ½ W₂² loss 
@@ -99,6 +101,72 @@ def wasserstein_adam(
         pt.save(pt.stack((pt.tensor(losses), pt.tensor(grad_norms))), os.path.join(store_directory or ".", "wasserstein_adam_losses.pt"))
 
     return X_param.detach().cpu(), losses, grad_norms
+
+def wasserstein_newton_krylov(
+    x0: np.ndarray,
+    timestepper, # Must be pt.Tensor to pt.Tensor
+    maxiter: int,
+    rdiff : float,
+    device=pt.device("cpu"),
+    dtype=pt.float64,
+    store_directory: str | None = None
+) -> np.ndarray:
+    N = x0.size
+    particle_filename = os.path.join(store_directory or ".", f"wasserstein_newton_krylov_particles_eps={rdiff}_N={N}.npy")
+
+    # Create the objective function as a wrapper around w2_loss_1d
+    def F(x: np.ndarray) -> np.ndarray:
+        # Create a torch tensor from x (make sure to copy)
+        X = pt.tensor(x, device=device, dtype=dtype, requires_grad=True).reshape((N,1))
+
+        # Compute the loss
+        loss = w2_loss_1d(X, timestepper)
+
+        # Compute gradient w.r.t. X
+        grad, = pt.autograd.grad(loss, X)
+        print('loss', loss.item(), pt.norm(grad).item())
+
+        # Return only the gradient in numpy format. Copy just to be sure
+        return grad.detach().cpu().numpy().copy()[:,0]
+    
+    # Create a callback to store intermediate losses and particles
+    losses = []
+    grad_norms = []
+    def callback(xk, fk):
+        X = pt.tensor(xk, device=device, dtype=dtype, requires_grad=True).reshape((N, 1))
+
+        # Compute loss (we need to recompute it here, since fk is just the gradient)
+        loss = w2_loss_1d(X, timestepper).item()
+        grad_norm = np.linalg.norm(fk)
+
+        # Store values
+        losses.append(loss)
+        grad_norms.append(grad_norm)
+
+        # Print for monitoring
+        print(f"loss = {loss}, ‖grad‖ = {grad_norm}")
+
+        # Store the particles
+        if store_directory is not None:
+            np.save(particle_filename, xk)
+
+
+    # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
+    line_search = 'wolfe'
+    tol = 1.e-14
+    try:
+        x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
+    except opt.NoConvergence as e:
+        x_inf = e.args[0]
+
+    # Store the loss and grad_norm history
+    if store_directory is not None:
+        filename = os.path.join(store_directory or ".", f"wasserstein_newton_krylov_losses_eps={rdiff}_N={N}.npy")
+        data = np.stack((np.array(losses), np.array(grad_norms)), axis=0)
+        np.save(filename, data)
+        np.save(particle_filename, x_inf)
+
+    return x_inf
 
 def _call_loss(X0: pt.Tensor, timestepper, batch_size: int, device: str | pt.device = "mps"):
     # Act as if we're doing minibatching
