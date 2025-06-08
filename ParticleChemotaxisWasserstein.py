@@ -207,7 +207,7 @@ def calculateSteadyStateNewtonKrylov():
     D = 0.1
 
     # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions. Numpy.
-    N = 10**4
+    N = 10**5
     x0 = np.random.normal(5.0, 2.0, N)
     x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
     x0 = np.where(x0 > L, 2 * L - x0, x0)
@@ -220,8 +220,8 @@ def calculateSteadyStateNewtonKrylov():
     dtype = pt.float64
     def stepper(X : pt.Tensor) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
-    rdiff = 5.e-1 # the epsilon parameter
-    maxiter = 25
+    rdiff = 1.e0 # the epsilon parameter
+    maxiter = 50
     x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, device, dtype, store_directory=None)
 
     # Plot the steady-state and the analytic steady-state
@@ -253,6 +253,7 @@ def findOptimalNKParameters():
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
     T_psi = 1.0
+    burn_in = False
     device = pt.device('cpu')
     dtype = pt.float64
     maxiter = 50
@@ -270,11 +271,46 @@ def findOptimalNKParameters():
             x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
             x0 = np.where(x0 > L, 2 * L - x0, x0)
 
-            x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, device, dtype, store_directory)
+            x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burn_in, device, dtype, store_directory)
 
     # Storage is already taken care of, so nothing else to do!
 
-def plotSteadyState():
+def plotOptimalNKParameters():
+    store_directory = "./Results/"
+
+    # Initialize results matrix
+    N_array = [10**4, 2*10**4, 4*10**4, 8*10**4, 10**5]
+    rdiff_array = [1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]
+    loss_surface = np.full((len(N_array), len(rdiff_array)), np.nan)
+
+    # Load data
+    for i, N in enumerate(N_array):
+        for j, rdiff in enumerate(rdiff_array):
+            filename = os.path.join(store_directory, f"wasserstein_newton_krylov_losses_eps={rdiff}_N={N}.npy")
+            if os.path.exists(filename):
+                data = np.load(filename)
+                final_loss = data[0, -1]  # first row = losses
+                loss_surface[i, j] = final_loss
+            else:
+                print(f"File not found: {filename}")
+
+    # Convert to log10 for plotting (avoid log(0) issues)
+    log_Ns = np.log10(N_array)
+    log_rdiffs = np.log10(rdiff_array)
+    log_loss = np.log10(loss_surface)
+
+    # Plot
+    c = plt.pcolormesh(log_rdiffs, log_Ns, log_loss, shading='auto', cmap='viridis')
+    plt.colorbar(c, label="log₁₀(final loss)")
+    plt.xlabel("log₁₀(rdiff)")
+    plt.ylabel("log₁₀(N)")
+    plt.title("Final Wasserstein Loss Surface")
+    plt.xticks(log_rdiffs, labels=[f"{r:.0e}" for r in rdiff_array])
+    plt.yticks(log_Ns, labels=[str(N) for N in N_array])
+    plt.tight_layout()
+    plt.show()
+
+def plotAdamSteadyState():
     store_directory = "./Results/"
     filename = os.path.join(store_directory, "particles_wasserstein_adam.pt")
     particles = pt.load(filename, weights_only=True)
@@ -365,8 +401,13 @@ if __name__ == '__main__':
             print('This optimizer is not supported.')
     elif args.experiment == 'optimal_parameters':
         findOptimalNKParameters()
+    elif args.experiment == 'plot_optimal_parameters':
+        plotOptimalNKParameters()
     elif args.experiment == 'plot-steady-state':
-        plotSteadyState()
+        if args.optimizer == 'adam':
+            plotAdamSteadyState()
+        else:
+            print('Choose an optimizer who\'s steady state to show')
     elif args.experiment == 'test':
         test_w2_helpers()
     else:

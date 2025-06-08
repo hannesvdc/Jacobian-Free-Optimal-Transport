@@ -9,19 +9,23 @@ import scipy.optimize as opt
 def w2_loss_1d(
     x: pt.Tensor,  # (B,1)   requires_grad = False
     timestepper,   # (B,1) -> (B,1)
+    burn_in: bool = False,      # perform burn-in simulation?
 ) -> pt.Tensor:
     """
     Returns the scalar ½ W₂²(X , φ_T(X)) for a single mini-batch.
     * x_batch is left on whatever device/dtype the caller uses.
     * timestepper must accept an input of shape (B,1) and return the same shape.
     """
-    # 1) push the batch through φ_T once
-    y = timestepper(x).detach()   # (B, 1)
+    # 1) perform a burnin if required
+    x_cur = timestepper(x).detach() if burn_in else x
+
+    # 2) push the batch through φ_T once
+    y = timestepper(x_cur).detach()   # (B, 1)
 
     # 2) sort both clouds along the particle axis
-    idx_x = x[:, 0].argsort()             # (B,)
+    idx_x = x_cur[:, 0].argsort()             # (B,)
     idx_y = y[:, 0].argsort()
-    diff  = x[idx_x, 0] - y[idx_y, 0]     # (B,)
+    diff  = x_cur[idx_x, 0] - y[idx_y, 0]     # (B,)
 
     # 3) ½ ‖ · ‖² averaged over particles
     loss  = 0.5 * diff.pow(2).mean()      # scalar
@@ -37,7 +41,8 @@ def wasserstein_adam(
     batch_size: int,
     lr: float,
     lr_decrease_factor: float,
-    lr_decrease_step: int, 
+    lr_decrease_step: int,
+    burn_in = False,
     device=pt.device("mps"),
     store_directory: str | None = None):
     """
@@ -75,7 +80,7 @@ def wasserstein_adam(
             x_sub = X_param[idx]
             
             opt.zero_grad()
-            loss = w2_loss_1d(x_sub, timestepper)
+            loss = w2_loss_1d(x_sub, timestepper, burn_in)
             loss.backward()
             grad_norm = X_param.grad.norm().item()
 
@@ -145,7 +150,7 @@ def wasserstein_newton_krylov(
         grad_norms.append(grad_norm)
 
         # Print for monitoring
-        print(f"Epoch {len(losses)}: loss = {loss}, ‖grad‖ = {grad_norm}")
+        print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: loss = {loss}, ‖grad‖ = {grad_norm}")
 
         # Store the particles
         if store_directory is not None:
