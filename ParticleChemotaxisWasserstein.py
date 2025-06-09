@@ -283,6 +283,7 @@ def plotOptimalNKParameters():
     N_array = [10**4, 2*10**4, 4*10**4, 8*10**4, 10**5]
     rdiff_array = [1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]
     loss_surface = np.full((len(N_array), len(rdiff_array)), np.nan)
+    grad_surface = np.full((len(N_array), len(rdiff_array)), np.nan)
 
     # Load data
     for i, N in enumerate(N_array):
@@ -291,7 +292,9 @@ def plotOptimalNKParameters():
             if os.path.exists(filename):
                 data = np.load(filename)
                 final_loss = data[0, -1]  # first row = losses
+                final_grad = data[1, -1]
                 loss_surface[i, j] = final_loss
+                grad_surface[i, j] = final_grad
             else:
                 print(f"File not found: {filename}")
 
@@ -299,13 +302,24 @@ def plotOptimalNKParameters():
     log_Ns = np.log10(N_array)
     log_rdiffs = np.log10(rdiff_array)
     log_loss = np.log10(loss_surface)
+    log_grad = np.log10(grad_surface)
 
     # Plot
-    c = plt.pcolormesh(log_rdiffs, log_Ns, log_loss, shading='auto', cmap='viridis')
-    plt.colorbar(c, label="log₁₀(final loss)")
-    plt.xlabel("log₁₀(rdiff)")
-    plt.ylabel("log₁₀(N)")
-    plt.title("Final Wasserstein Loss Surface")
+    c_loss = plt.pcolormesh(log_rdiffs, log_Ns, log_loss, shading='auto', cmap='viridis')
+    plt.colorbar(c_loss)
+    plt.xlabel(r"$\log_{10}(\varepsilon)$")
+    plt.ylabel(r"$\log_{10}(N)$")
+    plt.title("Final Wasserstein Losses")
+    plt.xticks(log_rdiffs, labels=[f"{r:.0e}" for r in rdiff_array])
+    plt.yticks(log_Ns, labels=[str(N) for N in N_array])
+    plt.tight_layout()
+
+    plt.figure()
+    c_grad = plt.pcolormesh(log_rdiffs, log_Ns, log_grad, shading='auto', cmap='viridis')
+    plt.colorbar(c_grad)
+    plt.xlabel(r"$\log_{10}(\varepsilon)$")
+    plt.ylabel(r"$\log_{10}(N)$")
+    plt.title("Final Wasserstein Gradient Norms")
     plt.xticks(log_rdiffs, labels=[f"{r:.0e}" for r in rdiff_array])
     plt.yticks(log_Ns, labels=[str(N) for N in N_array])
     plt.tight_layout()
