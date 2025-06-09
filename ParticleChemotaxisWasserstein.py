@@ -216,14 +216,14 @@ def calculateSteadyStateNewtonKrylov():
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
     T_psi = 1.0
-    burn_in = True
+    burnin_T = 10 * dt
     device = pt.device('cpu')
     dtype = pt.float64
-    def stepper(X : pt.Tensor) -> pt.Tensor:
-        return timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
+    def stepper(X : pt.Tensor, T : float = T_psi) -> pt.Tensor:
+        return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
     rdiff = 1.e0 # the epsilon parameter
     maxiter = 50
-    x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burn_in, device, dtype, store_directory=None)
+    x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory=None)
 
     # Plot the steady-state and the analytic steady-state
     x_array = pt.linspace(-L, L, 1000)
@@ -254,12 +254,12 @@ def findOptimalNKParameters():
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
     T_psi = 1.0
-    burn_in = False
+    burnin_T = 10 * dt
     device = pt.device('cpu')
     dtype = pt.float64
     maxiter = 50
-    def stepper(X : pt.Tensor) -> pt.Tensor:
-        return timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
+    def stepper(X : pt.Tensor, T : float = T_psi) -> pt.Tensor:
+        return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
 
     # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions. Numpy.
     N_array = [10**4, 2*10**4, 4*10**4, 8*10**4, 10**5]
@@ -272,7 +272,7 @@ def findOptimalNKParameters():
             x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
             x0 = np.where(x0 > L, 2 * L - x0, x0)
 
-            x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burn_in, device, dtype, store_directory)
+            x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory)
 
     # Storage is already taken care of, so nothing else to do!
 

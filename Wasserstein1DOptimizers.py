@@ -7,9 +7,9 @@ import scipy.optimize as opt
 #  ½ W₂² loss 
 # ----------------------------------------------------------------
 def w2_loss_1d(
-    x: pt.Tensor,  # (B,1)   requires_grad = False
-    timestepper,   # (B,1) -> (B,1)
-    burn_in: bool = False,      # perform burn-in simulation?
+    x: pt.Tensor,    # (B,1)   requires_grad = False
+    timestepper,     # (B,1) -> (B,1)
+    burnin_T = None, # perform burn-in simulation?
 ) -> pt.Tensor:
     """
     Returns the scalar ½ W₂²(X , φ_T(X)) for a single mini-batch.
@@ -17,7 +17,7 @@ def w2_loss_1d(
     * timestepper must accept an input of shape (B,1) and return the same shape.
     """
     # 1) perform a burnin if required
-    x_cur = timestepper(x) if burn_in else x
+    x_cur = timestepper(x, burnin_T) if burnin_T is not None else x
 
     # 2) push the batch through φ_T once
     y = timestepper(x_cur).detach()   # (B, 1)
@@ -79,7 +79,7 @@ def wasserstein_adam(
             x_sub = X_param[idx]
             
             opt.zero_grad()
-            loss = w2_loss_1d(x_sub, timestepper, burn_in=False)
+            loss = w2_loss_1d(x_sub, timestepper, burnin_T=None)
             loss.backward()
             grad_norm = X_param.grad.norm().item()
 
@@ -111,7 +111,7 @@ def wasserstein_newton_krylov(
     timestepper, # Must be pt.Tensor to pt.Tensor
     maxiter: int,
     rdiff : float,
-    burn_in = False,
+    burnin_T = None,
     device=pt.device("cpu"),
     dtype=pt.float64,
     store_directory: str | None = None
@@ -125,7 +125,7 @@ def wasserstein_newton_krylov(
         X = pt.tensor(x, device=device, dtype=dtype, requires_grad=True).reshape((N,1))
 
         # Compute the loss
-        loss = w2_loss_1d(X, timestepper, burn_in)
+        loss = w2_loss_1d(X, timestepper, burnin_T)
 
         # Compute gradient w.r.t. Xn
         grad, = pt.autograd.grad(loss, X)
