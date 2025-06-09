@@ -216,13 +216,14 @@ def calculateSteadyStateNewtonKrylov():
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
     T_psi = 1.0
+    burn_in = True
     device = pt.device('cpu')
     dtype = pt.float64
     def stepper(X : pt.Tensor) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
     rdiff = 1.e0 # the epsilon parameter
     maxiter = 50
-    x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, device, dtype, store_directory=None)
+    x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burn_in, device, dtype, store_directory=None)
 
     # Plot the steady-state and the analytic steady-state
     x_array = pt.linspace(-L, L, 1000)

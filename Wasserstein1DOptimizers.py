@@ -17,7 +17,7 @@ def w2_loss_1d(
     * timestepper must accept an input of shape (B,1) and return the same shape.
     """
     # 1) perform a burnin if required
-    x_cur = timestepper(x).detach() if burn_in else x
+    x_cur = timestepper(x) if burn_in else x
 
     # 2) push the batch through φ_T once
     y = timestepper(x_cur).detach()   # (B, 1)
@@ -42,7 +42,6 @@ def wasserstein_adam(
     lr: float,
     lr_decrease_factor: float,
     lr_decrease_step: int,
-    burn_in = False,
     device=pt.device("mps"),
     store_directory: str | None = None):
     """
@@ -80,7 +79,7 @@ def wasserstein_adam(
             x_sub = X_param[idx]
             
             opt.zero_grad()
-            loss = w2_loss_1d(x_sub, timestepper, burn_in)
+            loss = w2_loss_1d(x_sub, timestepper, burn_in=False)
             loss.backward()
             grad_norm = X_param.grad.norm().item()
 
@@ -112,6 +111,7 @@ def wasserstein_newton_krylov(
     timestepper, # Must be pt.Tensor to pt.Tensor
     maxiter: int,
     rdiff : float,
+    burn_in = False,
     device=pt.device("cpu"),
     dtype=pt.float64,
     store_directory: str | None = None
@@ -125,9 +125,9 @@ def wasserstein_newton_krylov(
         X = pt.tensor(x, device=device, dtype=dtype, requires_grad=True).reshape((N,1))
 
         # Compute the loss
-        loss = w2_loss_1d(X, timestepper)
+        loss = w2_loss_1d(X, timestepper, burn_in)
 
-        # Compute gradient w.r.t. X
+        # Compute gradient w.r.t. Xn
         grad, = pt.autograd.grad(loss, X)
         #print('loss', loss.item(), pt.norm(grad).item())
 
@@ -141,8 +141,7 @@ def wasserstein_newton_krylov(
         X = pt.tensor(xk, device=device, dtype=dtype, requires_grad=True).reshape((N, 1))
 
         # Compute loss (we need to recompute it here, since fk is just the gradient)
-        with pt.no_grad():
-            loss = w2_loss_1d(X, timestepper).item()
+        loss = w2_loss_1d(X, timestepper).item()
         grad_norm = np.linalg.norm(fk)
 
         # Store values
