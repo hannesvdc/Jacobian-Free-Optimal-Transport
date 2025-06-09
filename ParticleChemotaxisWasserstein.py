@@ -223,7 +223,7 @@ def calculateSteadyStateNewtonKrylov():
         return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
     rdiff = 1.e0 # the epsilon parameter
     maxiter = 50
-    x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory=None)
+    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory=None)
 
     # Plot the steady-state and the analytic steady-state
     x_array = pt.linspace(-L, L, 1000)
@@ -272,9 +272,17 @@ def findOptimalNKParameters():
             x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
             x0 = np.where(x0 > L, 2 * L - x0, x0)
 
-            x_inf = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory)
+            x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory)
 
-    # Storage is already taken care of, so nothing else to do!
+            # Apply boundary conditions just to be sure.
+            x_inf = np.where(x_inf < -L, 2 * (-L) - x_inf, x_inf)
+            x_inf = np.where(x_inf > L, 2 * L - x_inf, x_inf)
+
+            # Store the loss and grad_norm history
+            if store_directory is not None:
+                filename = os.path.join(store_directory or ".", f"wasserstein_newton_krylov_losses_eps={rdiff}_N={N}.npy")
+                data = np.stack((np.array(losses), np.array(grad_norms)), axis=0)
+                np.save(filename, data)
 
 def plotOptimalNKParameters():
     store_directory = "./Results/"

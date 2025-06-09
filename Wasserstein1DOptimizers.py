@@ -129,7 +129,6 @@ def wasserstein_newton_krylov(
 
         # Compute gradient w.r.t. Xn
         grad, = pt.autograd.grad(loss, X)
-        #print('loss', loss.item(), pt.norm(grad).item())
 
         # Return only the gradient in numpy format. Copy just to be sure
         return grad.detach().cpu().numpy().copy()[:,0]
@@ -155,7 +154,6 @@ def wasserstein_newton_krylov(
         if store_directory is not None:
             np.save(particle_filename, xk)
 
-
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
     line_search = 'wolfe'
     tol = 1.e-14
@@ -164,14 +162,11 @@ def wasserstein_newton_krylov(
     except opt.NoConvergence as e:
         x_inf = e.args[0]
 
-    # Store the loss and grad_norm history
+    # Update final particles in storage.
     if store_directory is not None:
-        filename = os.path.join(store_directory or ".", f"wasserstein_newton_krylov_losses_eps={rdiff}_N={N}.npy")
-        data = np.stack((np.array(losses), np.array(grad_norms)), axis=0)
-        np.save(filename, data)
         np.save(particle_filename, x_inf)
 
-    return x_inf
+    return x_inf, losses, grad_norms
 
 def _call_loss(X0: pt.Tensor, timestepper, batch_size: int, device: str | pt.device = "mps"):
     # Act as if we're doing minibatching
