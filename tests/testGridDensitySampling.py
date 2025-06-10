@@ -5,9 +5,9 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
 
-from Density1DOptimizers import reflected_hmc_from_tabulated_density
+from Density1DOptimizers import reflected_hmc_from_tabulated_density, kde_1d_fft_neumann
 
-def testGridMCMCSampling():
+def testSamplingAndKDE():
     # Setup the distribution
     S = lambda x: np.tanh(x)
     D = 0.1
@@ -20,10 +20,14 @@ def testGridMCMCSampling():
 
     # Sampling parameters
     N = 10**5
-    step = 1.0
+    step = 2.0
 
     # Do sampling
     samples = reflected_hmc_from_tabulated_density(grid, mu_grid, N, step)
+
+    # Do KDE again
+    bw = 0.25
+    kde = kde_1d_fft_neumann(samples, grid, bw)
 
     # Plot samples versus density
     x_array = np.linspace(-L, L, 1001)
@@ -32,12 +36,12 @@ def testGridMCMCSampling():
     dist = dist / Z
     plt.hist(samples, density=True, bins=100, color='tab:orange', label='MCMC')
     plt.plot(x_array, dist, linestyle='--', linewidth=2, color='tab:red', label='Steady State')
+    plt.plot(grid, kde, label='Gaussian KDE')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
     plt.grid(True)
     plt.legend()
     plt.show()
 
-
 if __name__ == '__main__':
-    testGridMCMCSampling()
+    testSamplingAndKDE()

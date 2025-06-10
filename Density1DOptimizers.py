@@ -93,6 +93,7 @@ def kde_1d_fft_neumann(particles: np.ndarray,
     # Impose discrete Neumann at both ends
     mu[0] = mu[1]  # left wall: μ₀ = μ₁  →   (μ₁-μ₀)/dx = 0
     mu[-1] = mu[-2]  # right wall
+    mu /= (mu.sum() * (x_knots[1]-x_knots[0]))   # renormalise, ∫μ=1
 
     return mu
 
@@ -118,7 +119,7 @@ def _kde_fft_core(particles, x_knots, bw):
     kernel = np.exp(-0.5*(grid/bw)**2)
     kernel /= kernel.sum()
     f_kernel = np.fft.rfft(np.pad(np.roll(kernel, B//2), (0, M-B)))
-    
+
     # 4. convolution & crop
     density = np.fft.irfft(f_counts * f_kernel, n=M)[:B]
     return density / (particles.size * dx)
