@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import CubicSpline
+import scipy.optimize as opt
 
 def median_tabulated(x, mu):
     """Approximate the 50th percentile from (x_i, μ_i) samples."""
@@ -123,3 +124,43 @@ def _kde_fft_core(particles, x_knots, bw):
     # 4. convolution & crop
     density = np.fft.irfft(f_counts * f_kernel, n=M)[:B]
     return density / (particles.size * dx)
+
+def density_newton_krylov(
+    mu0: np.ndarray,
+    x_knots : np.ndarray,
+    particle_timestepper, # np.ndarray to np.ndarray
+    maxiter: int,
+    rdiff : float,
+    N : int, 
+    mcmc_step_size : float, 
+    kde_bw : float,
+    store_directory: str | None = None
+) -> np.ndarray:
+    
+    # Create the Density to Density timestepper
+    rng = np.random.RandomState()
+    def timestepper(mu):
+        particles = reflected_hmc_from_tabulated_density(x_knots, mu, N, mcmc_step_size, rng)
+        new_particles = particle_timestepper(particles)
+        mu_new = kde_1d_fft_neumann(new_particles, x_knots, kde_bw)
+        return mu_new
+    def psi(mu0):
+        return mu0 - timestepper(mu0)
+    
+    # Create a callback to store intermediate losses and particles
+    losses = []
+    def callback(xk, fk):
+        # Compute loss (we need to recompute it here, since fk is just the gradient)
+        loss = np.linalg.norm(fk)
+        losses.append(loss)
+        print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: loss = {loss}")
+
+    # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
+    line_search = 'wolfe'
+    tol = 1.e-14
+    try:
+        x_inf = opt.newton_krylov(psi, mu0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=False)
+    except opt.NoConvergence as e:
+        x_inf = e.args[0]
+
+    return x_inf, losses
