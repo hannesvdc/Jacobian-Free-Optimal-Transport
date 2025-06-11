@@ -158,7 +158,7 @@ def wasserstein_newton_krylov(
     line_search = 'wolfe'
     tol = 1.e-14
     try:
-        x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=False)
+        x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, line_search=line_search, callback=callback, verbose=False)
     except opt.NoConvergence as e:
         x_inf = e.args[0]
 

@@ -56,7 +56,7 @@ def calculateSteadyState():
 
     # Do Newton-Krylov optmization
     maxiter = 50
-    rdiff = 1.e-4
+    rdiff = 1.e-3
     mu_inf = density_newton_krylov(mu0, grid, particle_timestepper, maxiter, rdiff, N, mcmc_step_size, kde_bw, store_directory=None)
 
     # Plot the initial and final density, as well as the true steady-state distribution

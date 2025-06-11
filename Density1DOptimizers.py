@@ -24,13 +24,15 @@ def reflected_hmc_from_tabulated_density(
     Neumann (zero-flux) boundary conditions are enforced via reflection.
     Returns a 1-D numpy array of length `N`.
     """
+    EPS = 1.e-10
     if rng is None:
         rng = np.random.RandomState()
 
     # 1.  spline in log-space with clamped (∂x log μ = 0) BC
     spline = CubicSpline(x_knots, mu_knots, bc_type='clamped')   # Neumann at both ends
-    U   = lambda x: -np.log(spline(x) )     # potential  U  = −log π
-    dU  = lambda x: -spline.derivative()(x) / spline(x)  # dU/dx = - dmu(x)/dx / mu(x)
+    d_spline = spline.derivative()
+    U   = lambda x: -np.log(max(spline(x), EPS))       # potential  U  = −log π
+    dU  = lambda x: -d_spline(x) / max(spline(x), EPS) # dU/dx = - dmu(x)/dx / mu(x)
 
     # 2. Boundary points and starting point (50th percentile)
     a, b = x_knots[0], x_knots[-1]
@@ -151,15 +153,15 @@ def density_newton_krylov(
     losses = []
     def callback(xk, fk):
         # Compute loss (we need to recompute it here, since fk is just the gradient)
-        loss = np.linalg.norm(fk)
-        losses.append(loss)
-        print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: loss = {loss}")
+        psi_val = np.linalg.norm(fk)
+        losses.append(psi_val)
+        print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: psi_val = {psi_val}")
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
     line_search = 'wolfe'
     tol = 1.e-14
     try:
-        x_inf = opt.newton_krylov(psi, mu0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=False)
+        x_inf = opt.newton_krylov(psi, mu0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
     except opt.NoConvergence as e:
         x_inf = e.args[0]
 
