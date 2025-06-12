@@ -47,7 +47,7 @@ def timeEvolution():
     # Build the density-to-density timestepper
     N = 10**5
     mcmc_step_size = 2.0
-    kde_bw = 0.1
+    kde_bw = 0.01
     dt = 1.e-3
     T_psi = 1.0
     def dtod_timestepper(mu):
@@ -96,14 +96,14 @@ def calculateSteadyState():
     T_psi = 1.0
     particle_timestepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi)
 
-    # Newton-Krylov optimzer with parameters
+    # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
     N = 10**5
     mcmc_step_size = 2.0
     kde_bw = 0.01
 
     # Do Newton-Krylov optmization
     maxiter = 50
-    rdiff = 1.e-3
+    rdiff = 1.e-5
     mu_inf, losses = density_newton_krylov(mu0, grid, particle_timestepper, maxiter, rdiff, N, mcmc_step_size, kde_bw, store_directory=None)
 
     # Plot the initial and final density, as well as the true steady-state distribution

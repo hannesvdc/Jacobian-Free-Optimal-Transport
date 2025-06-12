@@ -160,7 +160,7 @@ def density_newton_krylov(
         print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: psi_val = {psi_val}")
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
-    line_search = 'wolfe'
+    line_search = None#'wolfe'
     tol = 1.e-14
     try:
         x_inf = opt.newton_krylov(psi, mu0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
