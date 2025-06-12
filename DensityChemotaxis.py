@@ -47,16 +47,16 @@ def timeEvolution():
     # Build the density-to-density timestepper
     N = 10**5
     mcmc_step_size = 2.0
-    kde_bw = 0.25
+    kde_bw = 0.1
     dt = 1.e-3
     T_psi = 1.0
     def dtod_timestepper(mu):
         particles = reflected_hmc_from_tabulated_density(grid, mu, N, mcmc_step_size, rng)
-        new_particles = timestepper(particles, S, dS, chi, D, dt, T_psi)
+        new_particles = timestepper(particles, S, dS, chi, D, dt, T_psi, verbose=False)
         return kde_1d_fft_neumann(new_particles, grid, kde_bw)
     
-    # Do timestepping up to 300 seconds
-    T = 300.0
+    # Do timestepping up to 500 seconds
+    T = 500.0
     n_steps = int(T / T_psi)
     mu = np.copy(mu0)
     for n in range(n_steps):
@@ -99,7 +99,7 @@ def calculateSteadyState():
     # Newton-Krylov optimzer with parameters
     N = 10**5
     mcmc_step_size = 2.0
-    kde_bw = 0.25
+    kde_bw = 0.01
 
     # Do Newton-Krylov optmization
     maxiter = 50
