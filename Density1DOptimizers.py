@@ -151,10 +151,12 @@ def density_newton_krylov(
     
     # Create a callback to store intermediate losses and particles
     losses = []
+    densities = []
     def callback(xk, fk):
         # Compute loss (we need to recompute it here, since fk is just the gradient)
         psi_val = np.linalg.norm(fk)
         losses.append(psi_val)
+        densities.append(xk)
         print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: psi_val = {psi_val}")
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
@@ -164,5 +166,8 @@ def density_newton_krylov(
         x_inf = opt.newton_krylov(psi, mu0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
     except opt.NoConvergence as e:
         x_inf = e.args[0]
+    except KeyboardInterrupt as e:
+        print('Stopping newtion krylov')
+        x_inf = densities[-1]
 
     return x_inf, losses
