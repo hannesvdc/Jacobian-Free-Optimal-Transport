@@ -77,3 +77,45 @@ def particles_from_cdf(grid: np.ndarray,
         particles[k] = root
 
     return particles
+
+def cdf_newton_krylov(
+    cdf0: np.ndarray,
+    grid : np.ndarray,
+    particle_timestepper, # np.ndarray to np.ndarray
+    maxiter: int,
+    rdiff : float,
+    N : int, 
+    store_directory: str | None = None
+) -> np.ndarray:
+    
+    # Create the cdf to cdf timestepper
+    def timestepper(cdf):
+        particles = particles_from_cdf(grid, cdf, N)
+        new_particles = particle_timestepper(particles)
+        cdf_new = empirical_cdf_on_grid(new_particles, grid)
+        return cdf_new
+    def psi(cdf):
+        return cdf - timestepper(cdf)
+    
+    # Create a callback to store intermediate losses and particles
+    losses = []
+    densities = []
+    def callback(xk, fk):
+        # Compute loss (we need to recompute it here, since fk is just the gradient)
+        psi_val = np.linalg.norm(fk)
+        losses.append(psi_val)
+        densities.append(xk)
+        print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: psi_val = {psi_val}")
+
+    # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
+    line_search = None
+    tol = 1.e-14
+    try:
+        x_inf = opt.newton_krylov(psi, cdf0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
+    except opt.NoConvergence as e:
+        x_inf = e.args[0]
+    except KeyboardInterrupt as e:
+        print('Stopping newtion krylov')
+        x_inf = densities[-1]
+
+    return x_inf, losses

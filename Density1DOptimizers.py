@@ -146,8 +146,8 @@ def density_newton_krylov(
         new_particles = particle_timestepper(particles)
         mu_new = kde_1d_fft_neumann(new_particles, x_knots, kde_bw)
         return mu_new
-    def psi(mu0):
-        return mu0 - timestepper(mu0)
+    def psi(mu):
+        return mu - timestepper(mu)
     
     # Create a callback to store intermediate losses and particles
     losses = []
