@@ -99,11 +99,11 @@ def calculateSteadyState():
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
     N = 10**5
     mcmc_step_size = 2.0
-    kde_bw = 0.01
+    kde_bw = 0.02
 
     # Do Newton-Krylov optmization
     maxiter = 50
-    rdiff = 1.e-5
+    rdiff = 10**(-2.5)
     mu_inf, losses = density_newton_krylov(mu0, grid, particle_timestepper, maxiter, rdiff, N, mcmc_step_size, kde_bw, store_directory=None)
 
     # Plot the initial and final density, as well as the true steady-state distribution
