@@ -95,16 +95,18 @@ def cdf_newton_krylov(
         cdf_new = empirical_cdf_on_grid(new_particles, grid)
         return cdf_new
     def psi(cdf):
-        return cdf - timestepper(cdf)
+        psi_val = cdf - timestepper(cdf)
+        print('psi_val', np.linalg.norm(psi_val))
+        return psi_val
     
     # Create a callback to store intermediate losses and particles
-    losses = []
-    densities = []
+    losses = [np.linalg.norm(psi(cdf0))]
+    cdfs = [np.copy(cdf0)]
     def callback(xk, fk):
         # Compute loss (we need to recompute it here, since fk is just the gradient)
         psi_val = np.linalg.norm(fk)
         losses.append(psi_val)
-        densities.append(xk)
+        cdfs.append(np.copy(xk))
         print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: psi_val = {psi_val}")
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
@@ -116,6 +118,6 @@ def cdf_newton_krylov(
         x_inf = e.args[0]
     except KeyboardInterrupt as e:
         print('Stopping newtion krylov')
-        x_inf = densities[-1]
+        x_inf = cdfs[-1]
 
     return x_inf, losses

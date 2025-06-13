@@ -41,7 +41,7 @@ def timeEvolution():
     n_points = 1001
     grid = np.linspace(-L, L, n_points)
     dx = 2.0 * L / (n_points - 1)
-    mean = 5.0
+    mean = 2.0
     stdev = 2.0
     mu_0 = np.exp(-(grid - mean)**2 / (2.0 * stdev**2)) / np.sqrt(2.0 * np.pi * stdev**2)
     Z = np.trapz(mu_0, grid)
@@ -108,7 +108,7 @@ def calculateSteadyState():
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
     N = 10**5
     maxiter = 50
-    rdiff = 10**(-2.5)
+    rdiff = 10**(-1)
     cdf_inf, losses = cdf_newton_krylov(cdf_0, grid, timestepper, maxiter, rdiff, N, store_directory=None)
 
     # Plot the initial and final density, as well as the true steady-state distribution
@@ -121,6 +121,12 @@ def calculateSteadyState():
     plt.plot(grid, analytic_cdf, label='Analytic Steady-State CDF')
     plt.legend()
     plt.grid()
+
+    # Plot the losses
+    plt.figure()
+    plt.semilogy(np.arange(len(losses)), losses, label='Newton-Krylov Loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Iteration')
     plt.show()
 
 def parseArguments():
