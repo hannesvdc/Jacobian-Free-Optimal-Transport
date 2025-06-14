@@ -80,7 +80,6 @@ def timeEvolution():
     plt.grid()
     plt.show()
 
-
 def calculateSteadyState():
     # Physical functions defining the problem. 
     S = lambda x: np.tanh(x)
@@ -125,9 +124,10 @@ def calculateSteadyState():
 
     # Plot the losses
     plt.figure()
-    plt.semilogy(np.arange(len(losses)), losses, label='Newton-Krylov Loss')
+    plt.semilogy(np.arange(len(losses)), losses)
     plt.ylabel('Loss')
     plt.xlabel('Iteration')
+    plt.title('Newton-Krylov Loss')
     plt.show()
 
 def parseArguments():
