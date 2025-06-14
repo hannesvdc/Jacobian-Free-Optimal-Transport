@@ -107,7 +107,7 @@ def calculateSteadyState():
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
     N = 10**5
-    maxiter = 50
+    maxiter = 100
     rdiff = 10**(-1)
     cdf_inf, losses = cdf_newton_krylov(cdf_0, grid, timestepper, maxiter, rdiff, N, store_directory=None)
 
@@ -116,6 +116,7 @@ def calculateSteadyState():
     Z_dist = np.trapz(analytic_dist, grid)
     analytic_dist /= Z_dist
     analytic_cdf = analytic_dist.cumsum() * dx
+    analytic_cdf /= analytic_cdf[-1]
     plt.plot(grid, cdf_0, label='Initial CDF')
     plt.plot(grid, cdf_inf, label='Newton-Krylov CDF')
     plt.plot(grid, analytic_cdf, label='Analytic Steady-State CDF')
