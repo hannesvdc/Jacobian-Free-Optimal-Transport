@@ -40,7 +40,6 @@ def invert_table_monotone(values: np.ndarray,
     lam = (probs - values[idx-1]) / (values[idx] - values[idx-1])
     return (1.0 - lam) * grid[idx-1] + lam * grid[idx]
 
-# ChatGPT
 def particles_from_joint_cdf_cubic(x_grid: np.ndarray,
                                    y_grid: np.ndarray,
                                    cdf:  np.ndarray,
@@ -54,7 +53,7 @@ def particles_from_joint_cdf_cubic(x_grid: np.ndarray,
 
     Returns
     -------
-    cloud : (N, 2) ndarray   deterministic percentile lattice.
+    particles : (N, 2) ndarray   deterministic percentile lattice.
     """
     # lattice dimensions
     Nx = int(np.floor(np.sqrt(N)))
@@ -71,19 +70,19 @@ def particles_from_joint_cdf_cubic(x_grid: np.ndarray,
 
     # Invert for Nx mid-mass percentiles  (linear bracket + 1 Newton step)
     probs_x = (np.arange(Nx) + 1.0) / Nx
-    x_q = invert_table_monotone(Fx_vals, x_grid, probs_x)           # linear
-    x_q -= (Fx_spl(x_q) - probs_x) / Fx_spl.derivative()(x_q)       # refine vectorized
+    x_q = invert_table_monotone(Fx_vals, x_grid, probs_x)  # linear interpolation
+    x_q -= (Fx_spl(x_q) - probs_x) / Fx_spl.derivative()(x_q)  # Newton refine vectorized
 
     # ∂F/∂x rows for all x_q in one vectorised call
-    dFdx_rows = dFdx_spl(x_q, y_grid)           # shape (Nx, Ky)
-    fX_vec    = dFdx_rows[:, -1]                # marginal densities
+    dFdx_rows = dFdx_spl(x_q, y_grid) # shape (Nx, Ky)
+    fX_vec    = dFdx_rows[:, -1]  # marginal densities
     G_rows    = dFdx_rows / (fX_vec[:, None] + eps)  # conditional CDF rows with zero detection
 
     # build particle cloud row-by-row 
     probs_y = (np.arange(Ny) + 1.0) / Ny
     particles = np.empty((N, 2))
     idx = 0
-    for r, (xp, G_vals) in enumerate(zip(x_q, G_rows)):
+    for _, (xp, G_vals) in enumerate(zip(x_q, G_rows)):
         # cubic, monotone spline for this conditional CDF slice
         G_spl = PchipInterpolator(y_grid, G_vals)
 
@@ -96,60 +95,3 @@ def particles_from_joint_cdf_cubic(x_grid: np.ndarray,
         idx += Ny
 
     return particles
-
-
-# My implementation
-# def particles_from_joint_cdf(x_grid: np.ndarray,
-#                              y_grid: np.ndarray,
-#                              cdf:  np.ndarray,
-#                              N: int,
-#                              eps: float = 1e-12,
-#                              ) -> np.ndarray:
-#     """
-#     Generate N ≈ Nx x Ny particles whose joint law matches the tabulated CDF.
-
-#     Parameters
-#     ----------
-#     x_grid, y_grid : monotone grids (Kx, Ky)
-#     F_tab          : (Kx, Ky)   joint CDF table  (must start at 0, end at 1)
-#     N              : total #particles desired
-#     Nx             : optional #quantiles along x; default ≈ sqrt(N)
-#     eps, root_tol  : numerical tolerances (see 1-D version)
-
-#     Returns
-#     -------
-#     cloud : (N, 2) ndarray of lifted (x, y) particles.
-#     """
-#     Nx = int(np.floor(np.sqrt(N)))
-#     Ny = int(np.ceil(N / Nx))
-#     N = Nx * Ny # number of particles we will return
-
-#     # Smooth CDF spline & x-derivative
-#     F  = RectBivariateSpline(x_grid, y_grid, cdf, kx=3, ky=3, s=0)
-#     dFdx = F.partial_derivative(nu=1, nv=0)
-
-#     # Sample the marginal CDF F_X(x)
-#     F_X = lambda x: F(x, y_grid[-1]) # Need a callable function for brentq
-#     F_X_vals = F(x_grid, y_grid[-1])
-#     x_particles = invert_1d_spline(F_X, F_X_vals, x_grid, Nx)
-
-#     # Build the full particle cloud
-#     particles = np.zeros((N, 2))
-#     idx = 0
-#     for x_index in range(Nx):
-#         xp = x_particles[x_index]
-
-#         # Construct a callable conditional CDF and also one evaluated in the y_grid locations
-#         f_X_in_xp = dFdx(xp, y_grid[-1])
-#         F_Y_given_xp = lambda y: dFdx(xp, y) / (f_X_in_xp + eps)
-#         F_Y_given_xp_vals = dFdx(xp, y_grid) / (f_X_in_xp + eps)
-
-#         # Sample conditional CDF
-#         y_particles = invert_1d_spline(F_Y_given_xp, F_Y_given_xp_vals, y_grid, Ny)
-
-#         # 3c. store Ny particles with this xp
-#         particles[idx:idx+Ny, 0] = xp
-#         particles[idx:idx+Ny, 1] = y_particles
-#         idx += Ny
-
-#     return particles
