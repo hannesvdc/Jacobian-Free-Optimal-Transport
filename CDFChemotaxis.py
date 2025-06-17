@@ -117,8 +117,8 @@ def calculateSteadyState():
     analytic_cdf = analytic_dist.cumsum() * dx
     analytic_cdf /= analytic_cdf[-1]
     plt.plot(grid, cdf_0, label='Initial CDF')
-    plt.plot(grid, cdf_inf, label='Newton-Krylov CDF')
     plt.plot(grid, analytic_cdf, label='Analytic Steady-State CDF')
+    plt.plot(grid, cdf_inf, linestyle='--', label='Newton-Krylov CDF')
     plt.legend()
     plt.grid()
 

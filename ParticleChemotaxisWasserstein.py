@@ -216,12 +216,12 @@ def calculateSteadyStateNewtonKrylov():
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
     T_psi = 1.0
-    burnin_T = 10 * dt
+    burnin_T = None
     device = pt.device('cpu')
     dtype = pt.float64
     def stepper(X : pt.Tensor, T : float = T_psi) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
-    rdiff = 1.e0 # the epsilon parameter
+    rdiff = 1.e-1 # the epsilon parameter
     maxiter = 50
     x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory=None)
 
@@ -239,6 +239,15 @@ def calculateSteadyStateNewtonKrylov():
     plt.grid(True)
     plt.legend()
     
+     # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
+    plt.figure()
+    iterations = 1 + np.arange(len(losses))
+    plt.semilogy(iterations, losses, label='Newton-Krylov Reidual')
+    plt.semilogy(iterations, grad_norms, label='Newton-Krylov Residual Gradient')
+    plt.xlabel('Iteration')
+    plt.grid(True)
+    plt.legend()
+
     plt.show()
 
 def findOptimalNKParameters():
