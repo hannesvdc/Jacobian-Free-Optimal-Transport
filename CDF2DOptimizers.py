@@ -62,7 +62,7 @@ def particles_from_joint_cdf_cubic(x_grid: np.ndarray,
 
     # bicubic surface and its ∂F/∂x spline (built once)
     F_spl    = RectBivariateSpline(x_grid, y_grid, cdf, kx=3, ky=3, s=0)
-    dFdx_spl = F_spl.partial_derivative(nu=1, nv=0)
+    dFdx_spl = F_spl.partial_derivative(dx=1, dy=0)
 
     # 1-D marginal CDF  F_X(x)  (table already in cdf)
     Fx_vals = cdf[:, -1]
