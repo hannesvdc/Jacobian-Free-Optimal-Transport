@@ -2,9 +2,11 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy import optimize as opt
 
+from typing import Tuple, List, Callable
+
 # Empirical CDF from particles on a fixed grid
 def empirical_cdf_on_grid(particles: np.ndarray,
-                          grid:     np.ndarray) -> np.ndarray:
+                          grid: np.ndarray) -> np.ndarray:
     """
     Compute the empirical CDF on a set of predetermined grid points.
 
@@ -30,7 +32,6 @@ def empirical_cdf_on_grid(particles: np.ndarray,
 def particles_from_cdf(grid: np.ndarray,
                        cdf:  np.ndarray,
                        N:    int,
-                       eps: float = 1e-12,
                        solver_tol: float = 1e-10) -> np.ndarray:
     """
     Given F(x_j) on 101 knots, build a clamped cubic spline and
@@ -81,12 +82,10 @@ def particles_from_cdf(grid: np.ndarray,
 def cdf_newton_krylov(
     cdf0: np.ndarray,
     grid : np.ndarray,
-    particle_timestepper, # np.ndarray to np.ndarray
+    particle_timestepper: Callable[[np.ndarray], np.ndarray],
     maxiter: int,
     rdiff : float,
-    N : int, 
-    store_directory: str | None = None
-) -> np.ndarray:
+    N : int) -> Tuple[np.ndarray, List]:
     
     # Create the cdf to cdf timestepper
     def timestepper(cdf):
@@ -114,10 +113,11 @@ def cdf_newton_krylov(
     tol = 1.e-14
     try:
         x_inf = opt.newton_krylov(psi, cdf0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
-    except opt.NoConvergence as e:
-        x_inf = e.args[0]
-    except KeyboardInterrupt as e:
-        print('Stopping newtion krylov')
+    except KeyboardInterrupt:
+        print('Stopping Newton-Krylov due to user interrupt')
+        x_inf = cdfs[-1]
+    except:
+        print('Stopping Newton-Krylov because maximum number of iterations was reached.')
         x_inf = cdfs[-1]
 
     return x_inf, losses
