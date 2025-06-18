@@ -174,27 +174,41 @@ def plotAverageConvergenceRate():
     store_directory = './Results/slurm/'
     maxiter = 100
     n_jobs = 100
-    losses = np.empty((n_jobs, maxiter))
+    losses = np.empty((n_jobs, maxiter+1))
     for job_id in range(n_jobs):
         filename = f'CDF_1D_NK_job={job_id}.npy'
         job_losses = np.load(store_directory + filename)
-        losses[job_id,:] = job_losses
-
-    # Compute the ratios |psi(X_{k+1})| / |psi(X_k)| and average
-    reduction_ratios = np.average(losses[1:] / losses[:-1], axis=0)
+        losses[job_id, :] = job_losses
+    losses = losses[:,1:]
+    log_losses = np.log(losses)
 
     # Compute the average losses
-    average_losses = np.average(losses, axis=0)
+    average_losses = np.average(log_losses, axis=0)
+    averaged_log_reduction_rates = average_losses[5:61] - average_losses[4:60]
+    log_reduction_rate = np.average(averaged_log_reduction_rates)
+    reduction_rate = np.exp(log_reduction_rate)
+    print('Log Reduction Rate', log_reduction_rate)
+    print('Reduction rate', reduction_rate)
 
     # Plot both
-    iterations = np.arange(maxiter) + 1.0
-    plt.plot(iterations, reduction_ratios, label='Averaged Local Reduction Ratios')
+    plt.plot(np.arange(maxiter), average_losses, label='Averaged Log Residual')
+    plt.plot(np.arange(maxiter) + 1.0, -0.5 + (np.arange(maxiter) + 1.0) * log_reduction_rate, linestyle='dashed')
     plt.xlabel('Iteration (Epoch)')
     plt.legend()
+
+    # Plot both
     plt.figure()
-    plt.plot(iterations, average_losses, label='Averaged Residual')
+    plt.semilogy(np.arange(maxiter), np.exp(average_losses), label='Averaged Residual')
+    plt.semilogy(np.arange(maxiter) + 1.0, 0.7*reduction_rate**(np.arange(maxiter) + 1.0), linestyle='dashed', label=r'Linear Rate $|\psi(F_{k+1})| \ / \ |\psi(F_k)|$')
+    plt.title(r'Newton-Krylov Residual $|\psi(F_k)|$')
     plt.xlabel('Iteration (Epoch)')
     plt.legend()
+
+    # Plot all convergence of psi
+    plt.figure()
+    plt.plot(np.arange(maxiter), log_losses.transpose(), color='tab:blue')
+    plt.title('All Log Residuals')
+    plt.xlabel('Iteration (Epoch)')
     plt.show()
 
 def parseArguments():
