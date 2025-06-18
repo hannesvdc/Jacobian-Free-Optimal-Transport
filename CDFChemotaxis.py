@@ -170,6 +170,32 @@ def averageSteadyState(job_id : int):
     filename = f'CDF_1D_NK_job={job_id}.npy'
     np.save(store_directory + filename, np.array(losses))
 
+def plotAverageConvergenceRate():
+    store_directory = './Results/slurm/'
+    maxiter = 100
+    n_jobs = 100
+    losses = np.empty((n_jobs, maxiter))
+    for job_id in range(n_jobs):
+        filename = f'CDF_1D_NK_job={job_id}.npy'
+        job_losses = np.load(store_directory + filename)
+        losses[job_id,:] = job_losses
+
+    # Compute the ratios |psi(X_{k+1})| / |psi(X_k)| and average
+    reduction_ratios = np.average(losses[1:] / losses[:-1], axis=0)
+
+    # Compute the average losses
+    average_losses = np.average(losses, axis=0)
+
+    # Plot both
+    iterations = np.arange(maxiter) + 1.0
+    plt.plot(iterations, reduction_ratios, label='Averaged Local Reduction Ratios')
+    plt.xlabel('Iteration (Epoch)')
+    plt.legend()
+    plt.figure()
+    plt.plot(iterations, average_losses, label='Averaged Residual')
+    plt.xlabel('Iteration (Epoch)')
+    plt.legend()
+    plt.show()
 
 def parseArguments():
     import argparse
@@ -199,3 +225,5 @@ if __name__ == '__main__':
         calculateSteadyState()
     elif args.experiment == 'average-steady-state':
         averageSteadyState(args.job_id)
+    elif args.experiment == 'plot-averaged-residual':
+        plotAverageConvergenceRate()
