@@ -63,15 +63,19 @@ def particles_from_joint_cdf_cubic(x_grid: np.ndarray,
     # bicubic surface and its ∂F/∂x spline (built once)
     F_spl    = RectBivariateSpline(x_grid, y_grid, cdf, kx=3, ky=3, s=0)
     dFdx_spl = F_spl.partial_derivative(dx=1, dy=0)
+    print(dFdx_spl)
 
     # 1-D marginal CDF  F_X(x)  (table already in cdf)
     Fx_vals = cdf[:, -1]
+    print(Fx_vals, 'F_X')
     Fx_spl  = PchipInterpolator(x_grid, Fx_vals)  # cubic, monotone
 
     # Invert for Nx mid-mass percentiles  (linear bracket + 1 Newton step)
-    probs_x = (np.arange(Nx) + 1.0) / Nx
+    probs_x = (np.arange(Nx) + 0.5) / Nx
     x_q = invert_table_monotone(Fx_vals, x_grid, probs_x)  # linear interpolation
+    print('linearly interpolated percentiles', x_q)
     x_q -= (Fx_spl(x_q) - probs_x) / Fx_spl.derivative()(x_q)  # Newton refine vectorized
+    print('Newton-refined percentiles', x_q)
 
     # ∂F/∂x rows for all x_q in one vectorised call
     dFdx_rows = dFdx_spl(x_q, y_grid) # shape (Nx, Ky)
@@ -79,7 +83,7 @@ def particles_from_joint_cdf_cubic(x_grid: np.ndarray,
     G_rows    = dFdx_rows / (fX_vec[:, None] + eps)  # conditional CDF rows with zero detection
 
     # build particle cloud row-by-row 
-    probs_y = (np.arange(Ny) + 1.0) / Ny
+    probs_y = (np.arange(Ny) + 0.5) / Ny
     particles = np.empty((N, 2))
     idx = 0
     for _, (xp, G_vals) in enumerate(zip(x_q, G_rows)):

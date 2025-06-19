@@ -108,7 +108,7 @@ def calculateSteadyState():
     timestepper = lambda X: particle_timestepper(X, S, dS, chi, D, dt, T_psi, rng)
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
-    N = 10**5
+    N = 10**6
     maxiter = 100
     rdiff = 10**(-1)
     cdf_inf, losses = cdf_newton_krylov(cdf_0, grid, timestepper, maxiter, rdiff, N)
@@ -199,7 +199,8 @@ def plotAverageConvergenceRate():
     # Plot both
     plt.figure()
     plt.semilogy(np.arange(maxiter), np.exp(average_losses), label='Averaged Residual')
-    plt.semilogy(np.arange(maxiter) + 1.0, 0.7*reduction_rate**(np.arange(maxiter) + 1.0), linestyle='dashed', label=r'Linear Rate $|\psi(F_{k+1})| \ / \ |\psi(F_k)|$')
+    plt.semilogy(np.arange(maxiter) + 1.0, 0.55*reduction_rate**(np.arange(maxiter) + 1.0), linestyle='dashed', label=r'Linear Rate $|\psi(F_{k+1})| \ / \ |\psi(F_k)|$')
+    plt.semilogy(np.arange(maxiter) + 1.0, 6.e-2 + 0.0 * np.arange(maxiter), linestyle='dashed', label='Noise Level')
     plt.title(r'Newton-Krylov Residual $|\psi(F_k)|$')
     plt.xlabel('Iteration (Epoch)')
     plt.legend()
