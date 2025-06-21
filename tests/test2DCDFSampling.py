@@ -107,7 +107,7 @@ def testHalfMoonSampling():
     marginal_density_x /= np.trapz(marginal_density_x, x)
 
     # Sample the CDF
-    N = 10**5
+    N = 10**6
     particles = particles_from_joint_cdf_cubic(x, y, cdf, N, EPS)
     H, x_edges, y_edges = np.histogram2d(particles[:,0], particles[:,1], density=True, range=[[x_min, x_max], [y_min, y_max]], bins=[100,100])
 

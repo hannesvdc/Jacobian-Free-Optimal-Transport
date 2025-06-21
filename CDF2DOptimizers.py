@@ -23,9 +23,12 @@ def empirical_joint_cdf_on_grid(particles: np.ndarray,
         Joint CDF evaluated on the tensor grid.
     """
     N = particles.shape[0]
-    H, _, _ = np.histogram2d(particles[:, 0], particles[:, 1], bins=[x_grid, y_grid])
-    F = H.cumsum(axis=0).cumsum(axis=1) / N
-    F /= F[-1,-1] # Divide by the last element to reduce rounding errors in cumsum
+    x_edges = np.concatenate(([-np.inf], x_grid))
+    y_edges = np.concatenate(([-np.inf], y_grid))
+    H, *_ = np.histogram2d(particles[:, 0], particles[:, 1],
+                           bins=[x_edges, y_edges])
+    F = H.cumsum(axis=0).cumsum(axis=1)
+    F /= F[-1,-1]
 
     return F
 
