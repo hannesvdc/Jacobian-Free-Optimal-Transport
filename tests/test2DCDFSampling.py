@@ -128,7 +128,7 @@ def testHalfMoonSampling():
         H.T,
         origin="lower",
         cmap="viridis",
-        extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]],#type: ignore
+        extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]], #type: ignore
         aspect="auto",
     )
     fig2d.colorbar(im, ax=ax2d, label="density")
@@ -142,8 +142,8 @@ def testHalfMoonSampling():
     Xc, Yc = np.meshgrid(x_centres, y_centres, indexing="ij")
     xpos, ypos = Xc.ravel(), Yc.ravel()
     zpos       = np.zeros_like(xpos)
-    dx = (x_edges[1] - x_edges[0]) * np.ones_like(xpos)
-    dy = (y_edges[1] - y_edges[0]) * np.ones_like(ypos)
+    dx = (x_edges[1] - x_edges[0]) * np.ones_like(xpos)#type: ignore
+    dy = (y_edges[1] - y_edges[0]) * np.ones_like(ypos)#type: ignore
     dz = H.ravel()
     norm   = plt.Normalize(dz.min(), dz.max())#type: ignore
     colours = cm.viridis(norm(dz))#type: ignore
