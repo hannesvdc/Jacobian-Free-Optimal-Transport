@@ -2,6 +2,7 @@ import sys
 sys.path.append('../')
 
 import numpy as np
+from matplotlib import cm
 import matplotlib.pyplot as plt
 
 from CDF2DOptimizers import particles_from_joint_cdf_cubic
@@ -63,5 +64,105 @@ def testGaussianBimodal():
 
     plt.show()
 
+def testHalfMoonSampling():
+
+    # Define Parameters for the Potential
+    R = 2.0    # Radius of the half-moon
+    A = 2.0    # Controls the width of the moon (larger A -> narrower moon)
+    B = 0.5    # Controls the height of the wall (dissuading y < 0)
+    alpha = 1.5  # Controls the steepness of the wall at y=0
+    y_shift = -0.5
+
+    # Make the domain large enough to see the potential rise at the edges
+    x_min, x_max = -4, 4
+    y_min, y_max = -4, 4
+    grid_points = 200
+
+    x = np.linspace(x_min, x_max, grid_points)
+    y = np.linspace(y_min, y_max, grid_points)
+    X, Y = np.meshgrid(x, y)
+
+    # Define and Calculate the Potential Energy Function
+    def half_moon_potential(x, y, A, R, B, alpha):
+        """
+        Calculates the half-moon potential energy at given (x, y) coordinates.
+        """
+        r = np.sqrt(x**2 + y**2)  # Radial distance from the origin
+        U_radial = A * (r - R)**2 # Radial term: a parabolic well at radius R
+        U_wall = B * np.exp(-alpha * (y - y_shift)) # Wall term: an exponential wall for y < y_shift
+        
+        return U_radial + U_wall
+
+    # Calculate the potential energy and density
+    U = half_moon_potential(X, Y, A, R, B, alpha)
+    prob_density = np.exp(-U)
+    cdf = prob_density.cumsum(axis=0).cumsum(axis=1)
+    cdf /= cdf[-1,-1]
+    print('cdf', cdf)
+
+    # Compute the marginal of x for plotting purposes
+    marginal_density_x = np.zeros_like(x)
+    for index in range(grid_points):
+        marginal_density_x[index] = np.trapz(prob_density[index,:], y)
+    marginal_density_x /= np.trapz(marginal_density_x, x)
+
+    # Sample the CDF
+    N = 10**5
+    particles = particles_from_joint_cdf_cubic(x, y, cdf, N, EPS)
+    H, x_edges, y_edges = np.histogram2d(particles[:,0], particles[:,1], density=True, range=[[x_min, x_max], [y_min, y_max]], bins=[100,100])
+
+    # Plot the Probability Density as a 3D Surface
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    surf = ax.plot_surface(X, Y, prob_density.T, cmap=cm.viridis, linewidth=0, antialiased=False, rstride=2, cstride=2) #type: ignore
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('Probability Density')#type: ignore
+    ax.set_title('3D View of Half-Moon Probability Density', pad=20)
+    ax.view_init(elev=45, azim=-65)#type: ignore
+    fig.colorbar(surf, shrink=0.6, aspect=10, label='Probability Density $\propto e^{-U(x,y)}$')
+
+    # --- 2-D heat-map ---------------------------------------------------
+    fig2d, ax2d = plt.subplots(figsize=(6, 5))
+    im = ax2d.imshow(
+        H.T,
+        origin="lower",
+        cmap="viridis",
+        extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]],#type: ignore
+        aspect="auto",
+    )
+    fig2d.colorbar(im, ax=ax2d, label="density")
+    ax2d.set_xlabel("x"); ax2d.set_ylabel("y")
+    ax2d.set_title(f"Histogram heat map")
+    plt.tight_layout()
+
+    # Plot a histogram of the sampled particles
+    x_centres = 0.5 * (x_edges[:-1] + x_edges[1:])
+    y_centres = 0.5 * (y_edges[:-1] + y_edges[1:])
+    Xc, Yc = np.meshgrid(x_centres, y_centres, indexing="ij")
+    xpos, ypos = Xc.ravel(), Yc.ravel()
+    zpos       = np.zeros_like(xpos)
+    dx = (x_edges[1] - x_edges[0]) * np.ones_like(xpos)
+    dy = (y_edges[1] - y_edges[0]) * np.ones_like(ypos)
+    dz = H.ravel()
+    norm   = plt.Normalize(dz.min(), dz.max())#type: ignore
+    colours = cm.viridis(norm(dz))#type: ignore
+    fig3d = plt.figure(figsize=(7, 6))
+    ax3d  = fig3d.add_subplot(111, projection="3d", proj_type="ortho")
+    ax3d.bar3d(xpos, ypos, zpos, dx, dy, dz, color=colours, shade=True)#type: ignore
+    ax3d.set_xlabel("x"); ax3d.set_ylabel("y"); ax3d.set_zlabel("density")#type: ignore
+    ax3d.set_title(f"3-D Histogram", pad=12)
+    ax3d.view_init(elev=40, azim=-55)#type: ignore
+    plt.tight_layout()
+
+    # Plot the marginal of x and its samples
+    plt.figure()
+    plt.plot(x, marginal_density_x, label='Marginal Density X')
+    plt.hist(particles[:,0], bins=100, density=True, label='Particles')
+    plt.xlabel(r'$x$')
+    plt.title('Marginal Density X')
+    plt.legend()
+    plt.show()
+
 if __name__ == '__main__':
-    testGaussianBimodal()
+    testHalfMoonSampling()

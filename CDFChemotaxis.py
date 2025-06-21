@@ -109,7 +109,7 @@ def calculateSteadyState():
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
     N = 10**6
-    maxiter = 100
+    maxiter = 20
     rdiff = 10**(-1)
     cdf_inf, losses = cdf_newton_krylov(cdf_0, grid, timestepper, maxiter, rdiff, N)
 
