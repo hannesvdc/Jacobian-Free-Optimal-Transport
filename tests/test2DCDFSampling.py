@@ -120,7 +120,7 @@ def testHalfMoonSampling():
     ax.set_zlabel('Probability Density')#type: ignore
     ax.set_title('3D View of Half-Moon Probability Density', pad=20)
     ax.view_init(elev=45, azim=-65)#type: ignore
-    fig.colorbar(surf, shrink=0.6, aspect=10, label='Probability Density $\propto e^{-U(x,y)}$')
+    fig.colorbar(surf, shrink=0.6, aspect=10, label=r'Probability Density $\propto e^{-U(x,y)}$')
 
     # --- 2-D heat-map ---------------------------------------------------
     fig2d, ax2d = plt.subplots(figsize=(6, 5))

@@ -181,6 +181,7 @@ def calculateSteadyState():
         return new_cdf
     cdf0 = cdf_timestepper(cdf0)
     cdf0 = cdf_timestepper(cdf0)
+    cdf0 = cdf_timestepper(cdf0)
     print('Initial Guess Computed.\n')
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
