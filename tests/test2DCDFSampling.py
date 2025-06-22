@@ -114,7 +114,7 @@ def testHalfMoonSampling():
     # Plot the Probability Density as a 3D Surface
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
-    surf = ax.plot_surface(X, Y, prob_density.T, cmap=cm.viridis, linewidth=0, antialiased=False, rstride=2, cstride=2) #type: ignore
+    surf = ax.plot_surface(X, Y, prob_density, cmap=cm.viridis, linewidth=0, antialiased=False, rstride=2, cstride=2) #type: ignore
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('Probability Density')#type: ignore
@@ -125,7 +125,7 @@ def testHalfMoonSampling():
     # --- 2-D heat-map ---------------------------------------------------
     fig2d, ax2d = plt.subplots(figsize=(6, 5))
     im = ax2d.imshow(
-        H.T,
+        H,
         origin="lower",
         cmap="viridis",
         extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]], #type: ignore
@@ -139,7 +139,7 @@ def testHalfMoonSampling():
     # Plot a histogram of the sampled particles
     x_centres = 0.5 * (x_edges[:-1] + x_edges[1:])
     y_centres = 0.5 * (y_edges[:-1] + y_edges[1:])
-    Xc, Yc = np.meshgrid(x_centres, y_centres, indexing="ij")
+    Xc, Yc = np.meshgrid(x_centres, y_centres)
     xpos, ypos = Xc.ravel(), Yc.ravel()
     zpos       = np.zeros_like(xpos)
     dx = (x_edges[1] - x_edges[0]) * np.ones_like(xpos)#type: ignore

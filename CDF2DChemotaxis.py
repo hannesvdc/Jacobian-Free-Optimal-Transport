@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 from CDF2DOptimizers import particles_from_joint_cdf_cubic, empirical_joint_cdf_on_grid, cdf_newton_krylov
 
@@ -24,7 +25,7 @@ def half_moon_potential(z, A, R, B, alpha, y_shift):
 # Evaluated in particles Z = (X, Y)
 def gradient_half_moon_potential(z, A, R, B, alpha, y_shift):
     r = np.sqrt(z[:,0]**2 + z[:,1]**2)
-    radial_prefactor = 2 * A * (r - R) / r
+    radial_prefactor = 2 * A * (r - R) / r # TODO fix
         
     grad_radial_x = radial_prefactor * z[:,0]
     grad_radial_y = radial_prefactor * z[:,1]
@@ -92,7 +93,7 @@ def timeEvolution():
     print('cdf', cdf0)
 
     # Build the density-to-density timestepper
-    N = 100172
+    N = 10**6
     dt = 1.e-3
     T_psi = 1.0
     def cdf_timestepper(cdf):
