@@ -110,13 +110,19 @@ def cdf_newton_krylov(
     maxiter: int,
     rdiff : float,
     N : int) -> Tuple[np.ndarray, List]:
+
+    x_grid_points = len(x_grid)
+    y_grid_points = len(y_grid)
+    if len(cdf0.shape) > 1:
+        cdf0 = cdf0.flatten()
     
     # Create the cdf to cdf timestepper
     def timestepper(cdf):
+        cdf = cdf.reshape(x_grid_points, y_grid_points)
         particles = particles_from_joint_cdf_cubic(x_grid, y_grid, cdf, N) 
         new_particles = particle_timestepper(particles)
         cdf_new = empirical_joint_cdf_on_grid(new_particles, x_grid, y_grid)
-        return cdf_new
+        return cdf_new.flatten()
     def psi(cdf):
         psi_val = cdf - timestepper(cdf)
         print('psi_val', np.linalg.norm(psi_val))
@@ -143,5 +149,6 @@ def cdf_newton_krylov(
     except:
         print('Stopping Newton-Krylov because maximum number of iterations was reached.')
         x_inf = cdfs[-1]
-
+    x_inf = x_inf.reshape(x_grid_points, y_grid_points)
+    
     return x_inf, losses

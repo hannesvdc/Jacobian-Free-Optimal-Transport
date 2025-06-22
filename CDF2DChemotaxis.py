@@ -25,7 +25,9 @@ def half_moon_potential(z, A, R, B, alpha, y_shift):
 # Evaluated in particles Z = (X, Y)
 def gradient_half_moon_potential(z, A, R, B, alpha, y_shift):
     r = np.sqrt(z[:,0]**2 + z[:,1]**2)
-    radial_prefactor = 2 * A * (r - R) / r # TODO fix
+    r_nonzero = (r != 0.0)
+    radial_prefactor = np.zeros_like(r)
+    radial_prefactor[r_nonzero] = 2 * A * (r[r_nonzero] - R) / r[r_nonzero]
         
     grad_radial_x = radial_prefactor * z[:,0]
     grad_radial_y = radial_prefactor * z[:,1]
@@ -90,7 +92,6 @@ def timeEvolution():
     prob_density = np.exp(-U)
     cdf0 = prob_density.cumsum(axis=0).cumsum(axis=1)
     cdf0 /= cdf0[-1,-1]
-    print('cdf', cdf0)
 
     # Build the density-to-density timestepper
     N = 10**6
@@ -147,5 +148,107 @@ def timeEvolution():
 
     plt.show()
 
+def calculateSteadyState():
+    rng = np.random.RandomState()
+    R = 2.0
+    A = 2.0
+    B = 0.5
+    alpha = 1.5
+    y_shift = -0.5
+
+    # Start with a standard normal Gaussian
+    x_min, x_max = -4, 4
+    y_min, y_max = -4, 4
+    grid_points = 201
+    x_grid = np.linspace(x_min, x_max, grid_points)
+    y_grid = np.linspace(y_min, y_max, grid_points)
+    X, Y = np.meshgrid(x_grid, y_grid)
+    U = X**2 / 2.0 + (Y-1)**2 / 2.0
+    prob_density = np.exp(-U)
+    cdf0 = prob_density.cumsum(axis=0).cumsum(axis=1)
+    cdf0 /= cdf0[-1,-1]
+
+    # Build a wrapper around the particle time stepper
+    dt = 1.e-3
+    T_psi = 1.0
+    particle_timestepper = lambda X: timestepper(X, dt, T_psi, rng, A, R, B, alpha, y_shift)
+
+    N = 10**5
+    def cdf_timestepper(cdf): # CDF is a 2D array in this implementation
+        particles = particles_from_joint_cdf_cubic(x_grid, y_grid, cdf, N, 1.e-10)
+        new_particles = timestepper(particles, dt, T_psi, rng, A, R, B, alpha, y_shift, L=4.0)
+        new_cdf = empirical_joint_cdf_on_grid(new_particles, x_grid, y_grid) 
+        return new_cdf
+    cdf0 = cdf_timestepper(cdf0)
+    cdf0 = cdf_timestepper(cdf0)
+    print('Initial Guess Computed.\n')
+
+    # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
+    maxiter = 100
+    rdiff = 10**(-1)
+    cdf_inf, losses = cdf_newton_krylov(cdf0, x_grid, y_grid, particle_timestepper, maxiter, rdiff, N)
+    print(cdf_inf.shape, x_grid.shape, y_grid.shape)
+
+    particles = particles_from_joint_cdf_cubic(x_grid, y_grid, cdf_inf, N)
+    H, x_edges, y_edges = np.histogram2d(particles[:,0], particles[:,1], density=True, range=[[x_min, x_max], [y_min, y_max]], bins=[100,100])
+    fig2d, ax2d = plt.subplots(figsize=(6, 5))
+    im = ax2d.imshow(
+        H,
+        origin="lower",
+        cmap="viridis",
+        extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]], #type: ignore
+        aspect="auto",
+    )
+    fig2d.colorbar(im, ax=ax2d, label="density")
+    ax2d.set_xlabel("x"); ax2d.set_ylabel("y")
+    ax2d.set_title(f"Histogram heat map")
+    plt.tight_layout()
+
+    # Plot a histogram of the sampled particles
+    x_centres = 0.5 * (x_edges[:-1] + x_edges[1:])
+    y_centres = 0.5 * (y_edges[:-1] + y_edges[1:])
+    Xc, Yc = np.meshgrid(x_centres, y_centres)
+    xpos, ypos = Xc.ravel(), Yc.ravel()
+    zpos       = np.zeros_like(xpos)
+    dx = (x_edges[1] - x_edges[0]) * np.ones_like(xpos)#type: ignore
+    dy = (y_edges[1] - y_edges[0]) * np.ones_like(ypos)#type: ignore
+    dz = H.ravel()
+    norm   = plt.Normalize(dz.min(), dz.max())#type: ignore
+    colours = cm.viridis(norm(dz))#type: ignore
+    fig3d = plt.figure(figsize=(7, 6))
+    ax3d  = fig3d.add_subplot(111, projection="3d", proj_type="ortho")
+    ax3d.bar3d(xpos, ypos, zpos, dx, dy, dz, color=colours, shade=True)#type: ignore
+    ax3d.set_xlabel("x"); ax3d.set_ylabel("y"); ax3d.set_zlabel("density")#type: ignore
+    ax3d.set_title(f"3-D Histogram", pad=12)
+    ax3d.view_init(elev=40, azim=-55)#type: ignore
+    plt.tight_layout()
+
+    # Plot the losses
+    plt.figure()
+    plt.semilogy(np.arange(len(losses)), losses)
+    plt.ylabel('Loss')
+    plt.xlabel('Iteration')
+    plt.title('Newton-Krylov Loss')
+
+    plt.show()
+
+def parseArguments():
+    import argparse
+    parser = argparse.ArgumentParser(description="Run the Bimodal PDE simulation.")
+    parser.add_argument(
+        '--experiment',
+        type=str,
+        required=True,
+        dest='experiment',
+        help="Specify the experiment to run (e.g., 'evolution', 'test', or 'steady-state')."
+    )
+    args = parser.parse_args()
+    return args
+
 if __name__ == '__main__':
-    timeEvolution()
+    args = parseArguments()
+
+    if args.experiment == 'evolution':
+        timeEvolution()
+    elif args.experiment == 'steady-state':
+        calculateSteadyState()
