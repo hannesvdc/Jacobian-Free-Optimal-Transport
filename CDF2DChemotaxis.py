@@ -173,28 +173,47 @@ def calculateSteadyState():
     T_psi = 1.0
     particle_timestepper = lambda X: timestepper(X, dt, T_psi, rng, A, R, B, alpha, y_shift)
 
-    N = 10**5
+    N = 10**6
+    burnin = 5
     def cdf_timestepper(cdf): # CDF is a 2D array in this implementation
         particles = particles_from_joint_cdf_cubic(x_grid, y_grid, cdf, N, 1.e-10)
         new_particles = timestepper(particles, dt, T_psi, rng, A, R, B, alpha, y_shift, L=4.0)
         new_cdf = empirical_joint_cdf_on_grid(new_particles, x_grid, y_grid) 
         return new_cdf
-    cdf0 = cdf_timestepper(cdf0)
-    cdf0 = cdf_timestepper(cdf0)
-    cdf0 = cdf_timestepper(cdf0)
+    for _ in range(burnin):
+        cdf0 = cdf_timestepper(cdf0)
+    plotCDF(x_grid, y_grid, cdf0, N)
+    plt.show()
     print('Initial Guess Computed.\n')
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
-    maxiter = 100
-    rdiff = 10**(-1)
-    cdf_inf, losses = cdf_newton_krylov(cdf0, x_grid, y_grid, particle_timestepper, maxiter, rdiff, N)
+    maxiter = 50
+    rdiff = 10**(-1.5)
+    line_search = None
+    cdf_inf, losses = cdf_newton_krylov(cdf0, x_grid, y_grid, particle_timestepper, maxiter, rdiff, N, line_search=line_search)
     print(cdf_inf.shape, x_grid.shape, y_grid.shape)
 
-    particles = particles_from_joint_cdf_cubic(x_grid, y_grid, cdf_inf, N)
+    # Plot the CDF and the losses
+    plotCDF(x_grid, y_grid, cdf_inf, N)
+    plt.figure()
+    plt.semilogy(np.arange(len(losses)), losses)
+    plt.ylabel('Loss')
+    plt.xlabel('Iteration')
+    plt.title('Newton-Krylov Loss')
+
+    plt.show()
+
+def plotCDF(x_grid, y_grid, cdf, N):
+    x_min = np.min(x_grid)
+    x_max = np.max(x_grid)
+    y_min = np.min(y_grid)
+    y_max = np.max(y_grid)
+
+    particles = particles_from_joint_cdf_cubic(x_grid, y_grid, cdf, N)
     H, x_edges, y_edges = np.histogram2d(particles[:,0], particles[:,1], density=True, range=[[x_min, x_max], [y_min, y_max]], bins=[100,100])
     fig2d, ax2d = plt.subplots(figsize=(6, 5))
     im = ax2d.imshow(
-        H,
+        H.T,
         origin="lower",
         cmap="viridis",
         extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]], #type: ignore
@@ -208,7 +227,7 @@ def calculateSteadyState():
     # Plot a histogram of the sampled particles
     x_centres = 0.5 * (x_edges[:-1] + x_edges[1:])
     y_centres = 0.5 * (y_edges[:-1] + y_edges[1:])
-    Xc, Yc = np.meshgrid(x_centres, y_centres)
+    Xc, Yc = np.meshgrid(x_centres, y_centres, indexing="ij")
     xpos, ypos = Xc.ravel(), Yc.ravel()
     zpos       = np.zeros_like(xpos)
     dx = (x_edges[1] - x_edges[0]) * np.ones_like(xpos)#type: ignore
@@ -223,15 +242,6 @@ def calculateSteadyState():
     ax3d.set_title(f"3-D Histogram", pad=12)
     ax3d.view_init(elev=40, azim=-55)#type: ignore
     plt.tight_layout()
-
-    # Plot the losses
-    plt.figure()
-    plt.semilogy(np.arange(len(losses)), losses)
-    plt.ylabel('Loss')
-    plt.xlabel('Iteration')
-    plt.title('Newton-Krylov Loss')
-
-    plt.show()
 
 def parseArguments():
     import argparse

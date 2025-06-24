@@ -109,7 +109,8 @@ def cdf_newton_krylov(
     particle_timestepper: Callable[[np.ndarray], np.ndarray],
     maxiter: int,
     rdiff : float,
-    N : int) -> Tuple[np.ndarray, List]:
+    N : int,
+    line_search : str | None ='wolfe') -> Tuple[np.ndarray, List]:
 
     x_grid_points = len(x_grid)
     y_grid_points = len(y_grid)
@@ -139,7 +140,6 @@ def cdf_newton_krylov(
         print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: psi_val = {psi_val}")
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
-    line_search = 'wolfe'
     tol = 1.e-14
     try:
         x_inf = opt.newton_krylov(psi, cdf0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
@@ -150,5 +150,5 @@ def cdf_newton_krylov(
         print('Stopping Newton-Krylov because maximum number of iterations was reached.')
         x_inf = cdfs[-1]
     x_inf = x_inf.reshape(x_grid_points, y_grid_points)
-    
+
     return x_inf, losses

@@ -157,7 +157,7 @@ def testHalfMoonSampling():
 
     # Plot the marginal of x and its samples
     plt.figure()
-    plt.plot(x, marginal_density_x, label='Marginal Density X')
+    plt.plot(x, marginal_density_x, label='Marginal Density X (actually Y, but plotting...)')
     plt.hist(particles[:,0], bins=100, density=True, label='Particles')
     plt.xlabel(r'$x$')
     plt.title('Marginal Density X')
