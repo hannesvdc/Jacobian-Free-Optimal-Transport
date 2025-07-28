@@ -31,7 +31,7 @@ def compareAgentsAndPDE():
     x0[x0 <= -1.0] = 0.0
     x0[x0 >=  1.0] = 0.0
     k = int(T / dt)
-    x = agents.evolveAgents(x0, k, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N)
+    x = agents.evolveAgentsNumpy(x0, k, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N)
 
     # PDE time evolution up to time T
     dt = 1.e-4
