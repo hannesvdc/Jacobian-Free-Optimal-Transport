@@ -1,10 +1,13 @@
 import math
 import numpy as np
+import torch as pt
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
+import argparse
 
 import EconomicAgentTimestepper as agents
 import EconomicPDETimestepper as pde
+import Wasserstein1DOptimizers as wopt
 
 def compareAgentsAndPDE():
     N = 50000
@@ -56,7 +59,63 @@ def compareAgentsAndPDE():
     plt.show()
 
 def agentSteadyStateWasserstein():
-    pass
+    # Model parameters
+    N = 50000
+    eplus = 0.075
+    eminus = -0.072
+    vplus = 20
+    vminus = 20
+    vpc = vplus
+    vmc = vminus
+    gamma = 1
+    g = 38.0
+
+    # Time stepping parameters
+    Tpsi = 1.0
+    dt = 0.25
+    n_steps = int(Tpsi / dt)
+    def agent_timestepper(X: pt.Tensor): # Input shape (B, 1)
+        B = X.size()[0]
+        x = pt.squeeze(X)
+        x = agents.evolveAgentsTorch(x, n_steps, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, B, verbose=False)
+        x = pt.unsqueeze(x, dim=1)
+        return x
+
+    # Agent time evolution up to time T
+    sigma0 = 0.1
+    x0 = sigma0 * pt.randn(size=(N,1))
+    x0[x0 <= -1.0] = 0.0
+    x0[x0 >=  1.0] = 0.0
+
+    # Do Wasserstein-Adam optimization
+    batch_size = N
+    lr = 1.e-3
+    lr_decrease_factor = 0.1
+    lr_decrease_step = 1000
+    n_lrs = 4
+    epochs = n_lrs * lr_decrease_step
+    xf, losses, gradnorms = wopt.wasserstein_adam(x0, agent_timestepper, epochs, batch_size, lr, lr_decrease_factor, lr_decrease_step, pt.device('cpu'), store_directory=None)
+
+    # Plot a histogram of the final particles
+    plt.hist(xf.numpy(), bins=int(math.sqrt(N)), density=True)
+    plt.xlabel('Agents')
+    plt.legend()
+
+    epoch_counter = np.linspace(0, len(losses), len(losses))
+    plt.figure()
+    plt.semilogy(epoch_counter, losses, label='Losses')
+    plt.semilogy(epoch_counter, gradnorms, label='Gradient Norms')
+    plt.legend()
+    plt.show()
+
+def parseArguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--experiment', type=str, dest='experiment', default=None)
+    return parser.parse_args()
 
 if __name__ == '__main__':
-    compareAgentsAndPDE()
+    args = parseArguments()
+    if args.experiment == 'compareAgentsAndPDE':
+        compareAgentsAndPDE()
+    elif args.experiment == 'wasserstein':
+        agentSteadyStateWasserstein()

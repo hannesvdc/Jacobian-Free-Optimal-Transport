@@ -95,7 +95,7 @@ def wasserstein_adam(
         with pt.no_grad():
             probe_idx = pt.randperm(N, device=device)[:min(batch_size, N)]
             disp = (timestepper(X_param[probe_idx]) - X_param[probe_idx]).norm(dim=1).mean().item()
-            print(f"last ½S_ε = {loss.item():.4e} | "
+            print(f"last ½W = {loss.item():.4e} | "
                 f"‖grad‖₂={grad_norm:.3e} | "
                 f"lr={lr_now:.2e} | "
                 f"⟨|x-φ(x)|⟩ = {disp:.4e}")
