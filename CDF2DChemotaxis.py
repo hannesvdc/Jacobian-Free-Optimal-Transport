@@ -174,7 +174,7 @@ def calculateSteadyState():
     particle_timestepper = lambda X: timestepper(X, dt, T_psi, rng, A, R, B, alpha, y_shift)
 
     N = 10**6
-    burnin = 5
+    burnin = 4 # 3 also works
     def cdf_timestepper(cdf): # CDF is a 2D array in this implementation
         particles = particles_from_joint_cdf_cubic(x_grid, y_grid, cdf, N, 1.e-10)
         new_particles = timestepper(particles, dt, T_psi, rng, A, R, B, alpha, y_shift, L=4.0)
@@ -182,13 +182,11 @@ def calculateSteadyState():
         return new_cdf
     for _ in range(burnin):
         cdf0 = cdf_timestepper(cdf0)
-    plotCDF(x_grid, y_grid, cdf0, N)
-    plt.show()
     print('Initial Guess Computed.\n')
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
-    maxiter = 50
-    rdiff = 10**(-1.5)
+    maxiter = 100
+    rdiff = 10**(-1.0)
     line_search = None
     cdf_inf, losses = cdf_newton_krylov(cdf0, x_grid, y_grid, particle_timestepper, maxiter, rdiff, N, line_search=line_search)
     print(cdf_inf.shape, x_grid.shape, y_grid.shape)
