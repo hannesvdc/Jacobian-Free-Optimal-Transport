@@ -14,7 +14,6 @@ def event_timestepper_numpy(x : np.ndarray, dt, gamma, vplus, vminus, vpc, vmc, 
     for _ in range(num_step):
         Good_news=np.random.poisson(dt_small*vpc,N)
         Bad_news=np.random.poisson(dt_small*vmc,N)
-        print(Good_news)
         Infplus=eplus*Good_news
         Infminus=eminus*Bad_news
         Inftotal=Infplus+Infminus
@@ -27,7 +26,6 @@ def event_timestepper_numpy(x : np.ndarray, dt, gamma, vplus, vminus, vpc, vmc, 
             #Needs special handling, could have gone outside  (-1,1)
             Gnia=Good_news[ia]
             Bnia=Bad_news[ia]
-            print(Gnia, type(Gnia))
             timeb = np.random.uniform(0,dt_small,Gnia)       #Times of buys
             times = np.random.uniform(0,dt_small,Bnia)      # and sells
             type_bs = np.append(np.ones(Gnia), -np.ones(Bnia))

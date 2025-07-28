@@ -18,10 +18,6 @@ def compareAgentsAndPDE():
     gamma = 1
     g = 38.0
 
-    # Calculate aggregate constants
-    c = vplus * eplus + vminus * eminus
-    sigma = math.sqrt(vplus * eplus**2 + vminus * eminus**2)
-
     # Time stepping parameters
     T = 100.0
     dt = 0.25
@@ -42,15 +38,16 @@ def compareAgentsAndPDE():
     x_faces = np.linspace(-1.0, 1.0, N_faces)
     x_centers = 0.5 * (x_faces[1:] + x_faces[:-1])
     rho0 = np.exp(-x_centers**2 / (2.0 * sigma0**2)) / np.sqrt(2.0 * np.pi * sigma0**2)
-    rho_T = pde.PDETimestepper(rho0, x_faces, dt, T, gamma, c, sigma)
+    rho_T = pde.PDETimestepper(rho0, x_faces, dt, T, gamma, vplus, vminus, eplus, eminus, g)
     print('rho_T', rho_T)
 
     # Find the steady-state of the PDE through Newton-Krylov
     Tpsi = 1.e-1
-    F = lambda rho: rho - pde.PDETimestepper(rho, x_faces, dt, Tpsi, gamma, c, sigma)
+    F = lambda rho: rho - pde.PDETimestepper(rho, x_faces, dt, Tpsi, gamma, vplus, vminus, eplus, eminus, g)
     rho_nk = opt.newton_krylov(F, rho0, maxiter=100)
 
     # Plot the histogram and density
+    print('Average particle location', np.mean(x))
     plt.hist(x, bins=int(math.sqrt(N)), density=True, label=rf"$T =${T}")
     plt.plot(x_centers, rho_T, label='Density after Time Evolution')
     plt.plot(x_centers, rho_nk, linestyle='--', label='Density after Newton-Krylov')
@@ -89,15 +86,34 @@ def agentSteadyStateWasserstein():
 
     # Do Wasserstein-Adam optimization
     batch_size = N
-    lr = 1.e-3
+    lr = 1.e-2
     lr_decrease_factor = 0.1
     lr_decrease_step = 1000
     n_lrs = 4
     epochs = n_lrs * lr_decrease_step
     xf, losses, gradnorms = wopt.wasserstein_adam(x0, agent_timestepper, epochs, batch_size, lr, lr_decrease_factor, lr_decrease_step, pt.device('cpu'), store_directory=None)
 
+    # Run the agents to a large time T to compare
+    T = 100.0
+    x0 = np.random.normal(0, sigma0, N)
+    x0[x0 <= -1.0] = 0.0
+    x0[x0 >=  1.0] = 0.0
+    k = int(T / dt)
+    x_evolution = agents.evolveAgentsNumpy(x0, k, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N)
+
+    # Also get the PDE solution at time T
+    dt = 1.e-4
+    N_faces = 100
+    x_faces = np.linspace(-1.0, 1.0, N_faces)
+    x_centers = 0.5 * (x_faces[1:] + x_faces[:-1])
+    rho0 = np.exp(-x_centers**2 / (2.0 * sigma0**2)) / np.sqrt(2.0 * np.pi * sigma0**2)
+    rho_T = pde.PDETimestepper(rho0, x_faces, dt, T, gamma, vplus, vminus, eplus, eminus)
+
     # Plot a histogram of the final particles
-    plt.hist(xf.numpy(), bins=int(math.sqrt(N)), density=True)
+    print('Average particle location', np.mean(xf.numpy()))
+    plt.hist(xf.numpy(), bins=int(math.sqrt(N)), density=True, alpha=0.5, label='Optimized Agents')
+    plt.hist(x_evolution, bins=int(math.sqrt(N)), density=True, alpha=0.5, label='Time-Evolved Agents')
+    plt.plot(x_centers, rho_T, label=f'PDE Solution at time {T}')
     plt.xlabel('Agents')
     plt.legend()
 
