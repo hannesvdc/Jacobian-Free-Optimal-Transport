@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.linalg as lg
 
-def FV_step(rho, x_faces, dt, gamma, vpc, vmc, eplus, eminus, g):
+def FV_step(rho, x_faces, dt, gamma, vpc, vmc, eplus, eminus):
     N = len(x_faces) - 1 # We have N midpoints
     assert N % 2 == 1 # Ensure x = 0 is a midpoint!
     h = 2.0 / N
@@ -49,7 +49,7 @@ def PDETimestepper(rho0, x_faces, dt, T, gamma, vplus, vminus, eplus, eminus, g)
 
     n_steps = int(T / dt)
     for n in range(n_steps):
-        rho, Rminus, Rplus = FV_step(rho, x_faces, dt, gamma, vpc, vmc, eplus, eminus, g)
+        rho, Rminus, Rplus = FV_step(rho, x_faces, dt, gamma, vpc, vmc, eplus, eminus)
         vpc  = vplus + g * Rplus
         vmc = vminus + g * Rminus
         print('t =', (n+1)*dt)

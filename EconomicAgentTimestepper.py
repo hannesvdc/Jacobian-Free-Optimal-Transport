@@ -132,7 +132,7 @@ def evolveAgentsTorch(x0 : torch.Tensor, k, dt, gamma, vplus, vminus, vpc, vmc, 
     for i in range(k):
         if x.mean() > thres:
             break
-        x, vpc, vmc = event_timestepper_torch(x, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N)
+        x, vpc, vmc = event_timestepper_torch(x, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N,)
         if verbose:
             print('t =', (i+1)*dt)
     return x

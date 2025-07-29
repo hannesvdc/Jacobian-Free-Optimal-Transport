@@ -3,6 +3,8 @@ import torch as pt
 import numpy as np
 import scipy.optimize as opt
 
+from typing import Tuple, List
+
 # ----------------------------------------------------------------
 #  ½ W₂² loss 
 # ----------------------------------------------------------------
@@ -115,7 +117,7 @@ def wasserstein_newton_krylov(
     device=pt.device("cpu"),
     dtype=pt.float64,
     store_directory: str | None = None
-) -> np.ndarray:
+) -> Tuple[np.ndarray, List, List]:
     N = x0.size
     particle_filename = os.path.join(store_directory or ".", f"wasserstein_newton_krylov_particles_eps={rdiff}_N={N}.npy")
 
