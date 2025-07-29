@@ -107,13 +107,15 @@ def agentSteadyStateAdam():
     x_faces = np.linspace(-1.0, 1.0, N_faces)
     x_centers = 0.5 * (x_faces[1:] + x_faces[:-1])
     rho0 = np.exp(-x_centers**2 / (2.0 * sigma0**2)) / np.sqrt(2.0 * np.pi * sigma0**2)
-    rho_T = pde.PDETimestepper(rho0, x_faces, dt, T, gamma, vplus, vminus, eplus, eminus, g)
+    Tpsi = 1.e-1
+    F = lambda rho: rho - pde.PDETimestepper(rho, x_faces, dt, Tpsi, gamma, vplus, vminus, eplus, eminus, g)
+    rho_nk = opt.newton_krylov(F, rho0, maxiter=100)
 
     # Plot a histogram of the final particles
     print('Average particle location', np.mean(xf.numpy()))
     plt.hist(xf.numpy(), bins=int(math.sqrt(N)), density=True, alpha=0.5, label='Optimized Agents')
     plt.hist(x_evolution, bins=int(math.sqrt(N)), density=True, alpha=0.5, label='Time-Evolved Agents')
-    plt.plot(x_centers, rho_T, label=f'PDE Solution at time {T}')
+    plt.plot(x_centers, rho_nk, label='PDE Solution')
     plt.xlabel('Agents')
     plt.legend()
 
@@ -164,12 +166,14 @@ def agentSteadyStateNewtonKrylov():
     x_faces = np.linspace(-1.0, 1.0, N_faces)
     x_centers = 0.5 * (x_faces[1:] + x_faces[:-1])
     rho0 = np.exp(-x_centers**2 / (2.0 * sigma0**2)) / np.sqrt(2.0 * np.pi * sigma0**2)
-    rho_T = pde.PDETimestepper(rho0, x_faces, dt, T, gamma, vplus, vminus, eplus, eminus, g)
+    Tpsi = 1.e-1
+    F = lambda rho: rho - pde.PDETimestepper(rho, x_faces, dt, Tpsi, gamma, vplus, vminus, eplus, eminus, g)
+    rho_nk = opt.newton_krylov(F, rho0, maxiter=100)
 
     # Plot a histogram of the final particles
     print('Average particle location', np.mean(x_inf))
     plt.hist(x_inf, bins=int(math.sqrt(N)), density=True, alpha=0.5, label='Optimized Agents')
-    plt.plot(x_centers, rho_T, label=f'PDE Solution at time {T}')
+    plt.plot(x_centers, rho_nk, label='PDE Solution')
     plt.xlabel('Agents')
     plt.legend()
 
