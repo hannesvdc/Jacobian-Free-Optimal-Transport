@@ -25,8 +25,8 @@ def averagedVelocityField(X, hmax, hmin, beta, rng):
     return velocity_field / len(h_values)
 
 def estimateBimodalPotential():
-    xmin = -3.0
-    xmax = 3.0
+    xmin = -4.0
+    xmax = 4.0
 
     # Construct the basis functions at collocation points
     sigma = 0.5
@@ -69,7 +69,8 @@ def estimateBimodalPotential():
     U_parametric = lambda x: -np.dot(theta, psi(x))
     dU_parametric = lambda x: -np.dot(theta, dpsi(x))
     U_values = U_parametric(X0)
-    U_values -= np.min(U_values)
+    #U_values -= np.min(U_values)
+    print('U values', psi(X0).shape, theta.shape, U_values.shape)
 
     # Compare the analytic with estimated density
     plt.plot(X0, v, label='Estimated Velocity Field')
