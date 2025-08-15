@@ -42,7 +42,7 @@ def estimateBimodalPotential():
     dpsi = lambda x: np.array([dbf(x) for dbf in nabla_basis_functions])
 
     # Generate a uniform particle distribution
-    N = 1000001
+    N = 100001
     X0 = np.linspace(xmin, xmax, N) # sorted
     hmin = 1.e-3
     hmax = 1.e-2
