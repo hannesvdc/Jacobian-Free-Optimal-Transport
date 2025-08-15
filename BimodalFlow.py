@@ -66,14 +66,14 @@ def estimateBimodalPotential():
     
     # Build the potential energy approximation and exponentiate it.
     U_parametric = lambda x: -np.dot(theta, psi(x))
-    dU_parametric = lambda x: np.dot(theta, dpsi(x))
+    dU_parametric = lambda x: -np.dot(theta, dpsi(x))
     U_values = U_parametric(X0)
     U_values -= np.min(U_values)
     print('U values', psi(X0).shape, theta.shape, U_values.shape)
 
     # Compare the analytic with estimated density
     plt.plot(X0, v, label='Stochastic OT-Estimated Velocity Field')
-    plt.plot(X0, dU_parametric(X0), label='Least-Squares Approximation of OT')
+    plt.plot(X0, -dU_parametric(X0), label='Least-Squares Approximation of OT')
     plt.plot(X0, -dU(X0), label='Analytic Velocity Field')
     plt.xlabel(r'$x$')
     plt.legend()
