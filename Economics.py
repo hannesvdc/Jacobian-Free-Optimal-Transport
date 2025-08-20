@@ -128,7 +128,7 @@ def agentSteadyStateAdam():
 
 def agentSteadyStateNewtonKrylov():
     # Model parameters
-    N = 10000
+    N = 100000
     eplus = 0.075
     eminus = -0.072
     vplus = 20
@@ -142,12 +142,16 @@ def agentSteadyStateNewtonKrylov():
     Tpsi = 1.0
     dt = 0.25
     n_steps = int(Tpsi / dt)
-    def agent_timestepper(X: pt.Tensor) -> pt.Tensor: # Input shape (N,)
-        return agents.evolveAgentsTorch(X, n_steps, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N, verbose=False)
+    def agent_timestepper(X: pt.Tensor) -> pt.Tensor: # Input shape (N,1) for consistency
+        B = X.size()[0]
+        x = pt.squeeze(X)
+        x = agents.evolveAgentsTorch(x, n_steps, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, B, verbose=False)
+        x = pt.unsqueeze(x, dim=1)
+        return x
 
     # Agent time evolution up to time T
     sigma0 = 0.1
-    X0 = sigma0 * np.random.normal(0.0, sigma0, N)
+    X0 = np.random.normal(0.0, sigma0, N)
     X0[X0 <= -1.0] = 0.0
     X0[X0 >=  1.0] = 0.0
 
@@ -156,12 +160,12 @@ def agentSteadyStateNewtonKrylov():
     device = pt.device('cpu')
     dtype = pt.float64
     rdiff = 1.e-1 # the epsilon parameter
+    line_search = None
     maxiter = 50
-    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(X0, agent_timestepper, maxiter, rdiff, burnin_T, device, dtype, store_directory=None)
+    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(X0, agent_timestepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
 
     # Also get the PDE solution at time T
     dt = 1.e-4
-    T = 10.0
     N_faces = 100
     x_faces = np.linspace(-1.0, 1.0, N_faces)
     x_centers = 0.5 * (x_faces[1:] + x_faces[:-1])

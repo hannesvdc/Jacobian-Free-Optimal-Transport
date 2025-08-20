@@ -42,7 +42,7 @@ def plotInvariantDistribution():
     print('Remaining Particles:', len(X))
 
     # Plot histogram next to the invariant distribution
-    x_array = np.linspace(-6.0, 6.0, 1001)
+    x_array = np.linspace(-6.0, 8.0, 1001)
     p = lambda x: np.exp(2.0 * np.arctan(x)) / (1.0 + x**2)**2
     Z = np.trapz(p(x_array), x_array)
 

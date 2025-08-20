@@ -113,6 +113,7 @@ def wasserstein_newton_krylov(
     timestepper, # Must be pt.Tensor to pt.Tensor
     maxiter: int,
     rdiff : float,
+    line_search : str | None = 'wolfe',
     burnin_T = None,
     device=pt.device("cpu"),
     dtype=pt.float64,
@@ -157,7 +158,6 @@ def wasserstein_newton_krylov(
             np.save(particle_filename, xk)
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
-    line_search = 'wolfe'
     tol = 1.e-14
     try:
         x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, line_search=line_search, callback=callback, verbose=False)
