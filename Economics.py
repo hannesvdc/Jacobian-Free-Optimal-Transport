@@ -131,7 +131,7 @@ def agentSteadyStateAdam():
 
 def agentSteadyStateNewtonKrylov():
     # Model parameters
-    N = 1_000_000
+    N = 100_000
     eplus = 0.075
     eminus = -0.072
     vplus = 20
@@ -163,9 +163,9 @@ def agentSteadyStateNewtonKrylov():
     burnin_T = None
     device = pt.device('cpu')
     dtype = pt.float64
-    rdiff = 1.e-2 # the epsilon parameter
-    line_search = None
-    maxiter = 10
+    rdiff = 1.e-1 # the epsilon parameter
+    line_search = 'wolfe'
+    maxiter = 100
     x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(X0, agent_timestepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
 
     # Also get the PDE solution at time T
@@ -195,7 +195,7 @@ def agentSteadyStateNewtonKrylov():
 
 def optimalRDiff():
     # Model parameters
-    N = 1_000_000
+    N = 100_000
     eplus = 0.075
     eminus = -0.072
     vplus = 20

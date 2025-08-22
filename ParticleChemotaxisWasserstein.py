@@ -223,7 +223,8 @@ def calculateSteadyStateNewtonKrylov():
         return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
     rdiff = 1.e-1 # the epsilon parameter
     maxiter = 50
-    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory=None)
+    line_search = None
+    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
 
     # Plot the steady-state and the analytic steady-state
     x_array = pt.linspace(-L, L, 1000)

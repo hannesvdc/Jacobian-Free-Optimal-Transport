@@ -106,7 +106,10 @@ def event_timestepper_torch(x : torch.Tensor, dt, gamma, vplus, vminus, vpc, vmc
                     if x_temp <= -1:
                         x_temp = 0
                         sellers += 1
-            x_new[ia] = x_temp * torch.exp(-gamma * (dt_small - timebs[-1]))
+            if len(timebs) > 0:
+                x_new[ia] = x_temp * torch.exp(-gamma * (dt_small - timebs[-1]))
+            else:
+                x_new[ia] = x_temp * math.exp(-gamma * dt_small)
 
         x = x_new
 
