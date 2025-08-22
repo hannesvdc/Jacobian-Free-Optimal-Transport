@@ -137,9 +137,11 @@ def wasserstein_newton_krylov(
         return grad.detach().cpu().numpy().copy()[:,0]
     
     # Create a callback to store intermediate losses and particles
+    iterates = []
     losses = []
     grad_norms = []
     def callback(xk, fk):
+        print('xk', xk)
         X = pt.tensor(xk, device=device, dtype=dtype, requires_grad=True).reshape((N, 1))
 
         # Compute loss (we need to recompute it here, since fk is just the gradient)
@@ -147,6 +149,7 @@ def wasserstein_newton_krylov(
         grad_norm = np.linalg.norm(fk)
 
         # Store values
+        iterates.append(xk)
         losses.append(loss)
         grad_norms.append(grad_norm)
 
@@ -159,6 +162,7 @@ def wasserstein_newton_krylov(
 
     # Solve F(x) = 0 using scipy.newton_krylov. The parameter rdiff is key!
     tol = 1.e-14
+    iterates.append(x0)
     try:
         x_inf = opt.newton_krylov(F, x0, f_tol=tol, maxiter=maxiter, line_search=line_search, callback=callback, verbose=False)
     except opt.NoConvergence as e:
@@ -168,15 +172,4 @@ def wasserstein_newton_krylov(
     if store_directory is not None:
         np.save(particle_filename, x_inf)
 
-    return x_inf, losses, grad_norms
-
-def _call_loss(X0: pt.Tensor, timestepper, batch_size: int, device: str | pt.device = "mps"):
-    # Act as if we're doing minibatching
-    N, d = X0.shape
-    perm = pt.randperm(N, device=device)
-    idx = perm[0:batch_size]
-    x_sub = X0[idx]
-
-    # Call the loss function
-    loss = w2_loss_1d(x_sub, timestepper)
-    return loss
+    return iterates[-1], losses, grad_norms
