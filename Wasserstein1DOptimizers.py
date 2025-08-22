@@ -141,7 +141,6 @@ def wasserstein_newton_krylov(
     losses = []
     grad_norms = []
     def callback(xk, fk):
-        print('xk', xk)
         X = pt.tensor(xk, device=device, dtype=dtype, requires_grad=True).reshape((N, 1))
 
         # Compute loss (we need to recompute it here, since fk is just the gradient)

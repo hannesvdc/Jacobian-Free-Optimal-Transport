@@ -47,7 +47,10 @@ def event_timestepper_numpy(x : np.ndarray, dt, gamma, vplus, vminus, vpc, vmc, 
                     if (x_temp <= -1):
                         x_temp = 0
                         sellers = sellers + 1
-            x_new[ia] = x_temp*np.exp(-gamma*(dt_small - timebs[lindx-1]))
+            if len(timebs) > 0:
+                x_new[ia] = x_temp*np.exp(-gamma*(dt_small - timebs[lindx-1]))
+            else:
+                x_new[ia] = x_temp*np.exp(-gamma * dt_small)
         x = x_new
         # print('First number is', np.size(Ibuy), 'second number is', np.size(Isell))
         # input()

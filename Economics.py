@@ -227,7 +227,7 @@ def optimalRDiff():
     device = pt.device('cpu')
     dtype = pt.float64
     line_search = None
-    maxiter = 25
+    maxiter = 100
 
     # Try many rdiffs
     rdiffs = [1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]

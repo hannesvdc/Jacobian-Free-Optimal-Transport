@@ -48,7 +48,7 @@ def PDETimestepper(rho0, x_faces, dt, T, gamma, vplus, vminus, eplus, eminus, g)
     vpc = vplus
 
     n_steps = int(T / dt)
-    for n in range(n_steps):
+    for _ in range(n_steps):
         rho, Rminus, Rplus = FV_step(rho, x_faces, dt, gamma, vpc, vmc, eplus, eminus)
         vpc  = vplus + g * Rplus
         vmc = vminus + g * Rminus
