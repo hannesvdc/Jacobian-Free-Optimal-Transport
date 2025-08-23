@@ -122,14 +122,15 @@ def event_timestepper_torch(x : torch.Tensor, dt, gamma, vplus, vminus, vpc, vmc
     vmc = vminus + g * sellrate
     return x, vpc, vmc
 
-def evolveAgentsNumpy(x0, k, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N):
+def evolveAgentsNumpy(x0, k, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N, verbose=False):
     x = x0
     thres = 0.3
     for i in range(k):
         if x.mean() > thres:
             break
         x, vpc, vmc = event_timestepper_numpy(x, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N)
-        print('t =', (i+1)*dt)
+        if verbose:
+            print('t =', (i+1)*dt)
     return x
 
 def evolveAgentsTorch(x0 : torch.Tensor, k, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N, verbose=False):
