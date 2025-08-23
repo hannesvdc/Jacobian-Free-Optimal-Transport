@@ -15,7 +15,7 @@ def empirical_cdf_on_grid(particles: np.ndarray,
     particles : (N,) array_like
         Data points (need NOT be sorted).
     grid     : (M,) array_like
-        Monotone grid (length 101 in your use-case) where the CDF is desired.
+        Monotone grid where the CDF is desired.
 
     Returns
     -------

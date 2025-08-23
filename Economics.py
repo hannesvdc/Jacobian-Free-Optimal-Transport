@@ -288,7 +288,10 @@ def CDFNewtonKrylov():
     x_centers = 0.5 * (x_faces[1:] + x_faces[:-1])
     rho0 = np.exp(-x_centers**2 / (2.0 * sigma0**2)) / np.sqrt(2.0 * np.pi * sigma0**2)
     F = lambda rho: rho - pde.PDETimestepper(rho, x_faces, dt, Tpsi, gamma, vplus, vminus, eplus, eminus, g)
-    rho_nk = opt.newton_krylov(F, rho0, maxiter=100)
+    try:
+        rho_nk = opt.newton_krylov(F, rho0, maxiter=maxiter)
+    except opt.NoConvergence as e:
+        rho_nk = e.args[0]
     cdf_nk = np.concatenate(([0.0], np.cumsum(rho_nk)))
     cdf_nk /= cdf_nk[-1]
 
