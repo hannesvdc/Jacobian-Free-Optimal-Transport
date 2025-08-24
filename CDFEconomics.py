@@ -1,4 +1,3 @@
-import math
 import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
@@ -11,7 +10,7 @@ import EconomicPDETimestepper as pde
 import CDF1DOptimizers as cdfopt
 
 def CDFNewtonKrylov():
-     # Model parameters
+    # Model parameters
     N = 100_000
     eplus = 0.075
     eminus = -0.072
@@ -72,7 +71,53 @@ def CDFNewtonKrylov():
     plt.show()
 
 def optimalRDiff():
-    pass
+    # Model parameters
+    N = 100_000
+    eplus = 0.075
+    eminus = -0.072
+    vplus = 20
+    vminus = 20
+    vpc = vplus
+    vmc = vminus
+    gamma = 1
+    g = 38.0
+
+    # Time stepping parameters
+    Tpsi = 1.0
+    dt = 0.25
+    n_steps = int(Tpsi / dt)
+    def agent_timestepper(X: np.ndarray) -> np.ndarray: # Input shape (N,1) for consistency
+        x = agents.evolveAgentsNumpy(X, n_steps, dt, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, len(X), verbose=False)
+        return x
+
+    # Sample particles and build the initial CDF
+    n_grid_points = 101
+    grid = np.linspace(-1.0, 1.0, n_grid_points)
+    sigma0 = 1.0
+    X0 = np.random.normal(0.0, sigma0, N)
+    X0[X0 <= -1.0] = 0.0
+    X0[X0 >=  1.0] = 0.0
+    cdf0 = np.array([np.mean(X0 <= grid[i]) for i in range(len(grid))])
+    print('initial cdf', cdf0)
+
+    # Try many rdiffs
+    maxiter = 100
+    rdiffs = [1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]
+    def run_one(rdiff):
+        print('rdiff', rdiff)
+        cdf_inf, losses = cdfopt.cdf_newton_krylov(cdf0, grid, agent_timestepper, maxiter, rdiff, N)
+        return losses
+    with ThreadPoolExecutor() as ex:
+        total_losses = list(ex.map(run_one, rdiffs))
+
+    # Plot the losses for every rdiff
+    for index in range(len(rdiffs)):
+        iterations = np.arange(len(total_losses[index]))
+        plt.semilogy(iterations, total_losses[index], label=f"rdiff = {rdiffs[index]}")
+    plt.xlabel('Iteration')
+    plt.legend()
+    plt.show()
+
 
 def parseArguments():
     parser = argparse.ArgumentParser()

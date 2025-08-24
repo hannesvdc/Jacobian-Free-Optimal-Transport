@@ -83,7 +83,11 @@ def wasserstein_adam(
             opt.zero_grad()
             loss = w2_loss_1d(x_sub, timestepper, burnin_T=None)
             loss.backward()
-            grad_norm = X_param.grad.norm().item()
+            if X_param.grad is not None:
+                grad_norm = X_param.grad.norm().item()
+            else:
+                print('Wasserstein gradient not available.')
+                grad_norm = float("nan")
 
             opt.step()
             losses.append(loss.item())
