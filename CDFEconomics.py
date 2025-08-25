@@ -66,8 +66,6 @@ def CDFNewtonKrylov():
     except opt.NoConvergence as e:
         rho_nk = e.args[0]
     cdf_nk = from_density_to_cdf(rho_nk, x_centers, grid)
-    print(rho_nk)
-    print(x_centers)
 
     # Plot the initial, and optimized CDFs
     plt.plot(grid, cdf0, label='Initial CDF')
