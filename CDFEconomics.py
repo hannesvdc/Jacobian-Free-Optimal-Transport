@@ -9,6 +9,14 @@ import EconomicAgentTimestepper as agents
 import EconomicPDETimestepper as pde
 import CDF1DOptimizers as cdfopt
 
+# Assumes cdf_grid and rho_grid are interleaving with len(cdf_grid) = len(rho_grid) + 1
+def from_density_to_cdf(rho, rho_grid, cdf_grid):
+    dx = rho_grid[1] - rho_grid[0]
+    cdf = np.zeros_like(cdf_grid)
+    for cdf_index in range(1, len(cdf)):
+        cdf[cdf_index] = dx * np.sum(rho[0:cdf_index])
+    return cdf / cdf[-1]
+
 def CDFNewtonKrylov():
     # Model parameters
     N = 100_000
@@ -32,7 +40,7 @@ def CDFNewtonKrylov():
     # Sample particles and build the initial CDF
     n_grid_points = 101
     grid = np.linspace(-1.0, 1.0, n_grid_points)
-    sigma0 = 1.0
+    sigma0 = 0.1
     X0 = np.random.normal(0.0, sigma0, N)
     X0[X0 <= -1.0] = 0.0
     X0[X0 >=  1.0] = 0.0
@@ -41,29 +49,34 @@ def CDFNewtonKrylov():
 
     # Find the steady-state CDF
     maxiter = 100
-    rdiff = 1e0
+    rdiff = 1e-1
     cdf_inf, losses = cdfopt.cdf_newton_krylov(cdf0, grid, agent_timestepper, maxiter, rdiff, N)
 
     # Calculate the final CDF
+    sigma0_pde = 1.0
+    dt_pde = 1.e-4
+    maxiter = 100
     N_faces = 100
     x_faces = np.linspace(-1.0, 1.0, N_faces)
     x_centers = 0.5 * (x_faces[1:] + x_faces[:-1])
-    rho0 = np.exp(-x_centers**2 / (2.0 * sigma0**2)) / np.sqrt(2.0 * np.pi * sigma0**2)
-    F = lambda rho: rho - pde.PDETimestepper(rho, x_faces, dt, Tpsi, gamma, vplus, vminus, eplus, eminus, g)
+    rho0 = np.exp(-x_centers**2 / (2.0 * sigma0_pde**2)) / np.sqrt(2.0 * np.pi * sigma0_pde**2)
+    F = lambda rho: rho - pde.PDETimestepper(rho, x_faces, dt_pde, Tpsi, gamma, vplus, vminus, eplus, eminus, g)
     try:
         rho_nk = opt.newton_krylov(F, rho0, maxiter=maxiter)
     except opt.NoConvergence as e:
         rho_nk = e.args[0]
-    cdf_nk = np.concatenate(([0.0], np.cumsum(rho_nk)))
-    cdf_nk /= cdf_nk[-1]
+    cdf_nk = from_density_to_cdf(rho_nk, x_centers, grid)
+    print(rho_nk)
+    print(x_centers)
 
     # Plot the initial, and optimized CDFs
     plt.plot(grid, cdf0, label='Initial CDF')
     plt.plot(grid, cdf_inf, label='Optimized CDF')
-    plt.plot(x_faces, cdf_nk, label='Steady-State CDF')
+    plt.plot(grid, cdf_nk, label='Steady-State CDF')
+    plt.plot(x_centers, rho_nk, label='Steady-State Density (from PDE)')
     plt.xlabel(r'$x$')
     plt.legend()
-
+ 
     plt.figure()
     plt.semilogy(np.arange(len(losses)), losses, label='NK Losses')
     plt.xlabel('Newton-Krylov Iteration')
@@ -93,10 +106,8 @@ def optimalRDiff():
     # Sample particles and build the initial CDF
     n_grid_points = 101
     grid = np.linspace(-1.0, 1.0, n_grid_points)
-    sigma0 = 1.0
+    sigma0 = 0.1
     X0 = np.random.normal(0.0, sigma0, N)
-    X0[X0 <= -1.0] = 0.0
-    X0[X0 >=  1.0] = 0.0
     cdf0 = np.array([np.mean(X0 <= grid[i]) for i in range(len(grid))])
     print('initial cdf', cdf0)
 
@@ -126,7 +137,7 @@ def parseArguments():
 
 if __name__ == '__main__':
     args = parseArguments()
-    if args.experiment == 'cdf':
+    if args.experiment == 'newton-krylov':
         CDFNewtonKrylov()
     elif args.experiment == 'optimal-rdiff':
         optimalRDiff()

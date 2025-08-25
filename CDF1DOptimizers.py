@@ -95,7 +95,7 @@ def cdf_newton_krylov(
         return cdf_new
     def psi(cdf):
         psi_val = cdf - timestepper(cdf)
-        print('psi_val', np.linalg.norm(psi_val))
+        #print('psi_val', np.linalg.norm(psi_val))
         return psi_val
     
     # Create a callback to store intermediate losses and particles
