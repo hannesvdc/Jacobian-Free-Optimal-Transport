@@ -180,7 +180,7 @@ def agentSteadyStateNewtonKrylov():
 
     # Plot a histogram of the final particles
     print('Average particle location', np.mean(x_inf))
-    plt.hist(x_inf, bins=int(math.sqrt(N)), density=True, alpha=0.5, label='Optimized Agents')
+    plt.hist(x_inf, bins=int(math.sqrt(N)), density=True, alpha=0.5, label='NK-Optimized Agents')
     plt.plot(x_centers, rho_nk, label='PDE Solution')
     plt.plot(x_centers, rho0, label='Initial Distribution')
     plt.xlabel('Agents')

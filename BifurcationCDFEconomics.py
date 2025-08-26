@@ -34,6 +34,7 @@ def psi(cdf : np.ndarray, g : float) -> np.ndarray:
     return cdf - cdf_timestepper(cdf, g)
 
 # Solve for the initial CDF on the path
+print('\nComputing first point on the branch...')
 g0 = 38.0
 rdiff = 1e-1
 maxiter = 5
@@ -48,10 +49,10 @@ ds_max = 0.1
 ds = ds_max
 n_steps = 100
 tolerance = 1e-2
-solver_parameters = {'rdiff': rdiff, 'maxiter': maxiter}
-continuation_result = pycont.pseudoArclengthContinuation(psi, cdf0, g0, ds_min, ds_max, ds, n_steps, tolerance=tolerance)
+solver_parameters = {'rdiff': rdiff, 'nk_maxiter': maxiter, "tolerance": tolerance}
+continuation_result = pycont.pseudoArclengthContinuation(psi, cdf0, g0, ds_min, ds_max, ds, n_steps, solver_parameters=solver_parameters)
 
-for branch in continuation_result:
+for branch in continuation_result.branches:
     plt.plot(branch['p'], branch['u'], color='tab:blue')
 plt.xlabel(r"$g$")
 plt.ylabel(r"$\bar{X}$")
