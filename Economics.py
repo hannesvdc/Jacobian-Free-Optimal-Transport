@@ -160,13 +160,12 @@ def agentSteadyStateNewtonKrylov():
     print('X0', X0)
 
     # Newton-Krylov
-    burnin_T = None
     device = pt.device('cpu')
     dtype = pt.float64
     rdiff = 1e0 # the epsilon parameter
     line_search = 'wolfe'
     maxiter = 100
-    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(X0, agent_timestepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
+    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(X0, agent_timestepper, maxiter, rdiff, line_search, device, dtype, store_directory=None)
 
     # Also get the PDE solution at time T
     dt = 1.e-4
@@ -223,7 +222,6 @@ def optimalRDiff():
     X0[X0 >=  1.0] = 0.0
 
     # Newton-Krylov
-    burnin_T = None
     device = pt.device('cpu')
     dtype = pt.float64
     line_search = 'wolfe'
@@ -233,7 +231,7 @@ def optimalRDiff():
     rdiffs = [1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]
     def run_one(rdiff):
         print('rdiff', rdiff)
-        x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(X0, agent_timestepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
+        x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(X0, agent_timestepper, maxiter, rdiff, line_search, device, dtype, store_directory=None)
         return losses
     with ThreadPoolExecutor() as ex:
         total_losses = list(ex.map(run_one, rdiffs))

@@ -11,23 +11,19 @@ from typing import Tuple, List
 def w2_loss_1d(
     x: pt.Tensor,    # (B,1)   requires_grad = False
     timestepper,     # (B,1) -> (B,1)
-    burnin_T = None, # perform burn-in simulation?
 ) -> pt.Tensor:
     """
     Returns the scalar ½ W₂²(X , φ_T(X)) for a single mini-batch.
     * x_batch is left on whatever device/dtype the caller uses.
     * timestepper must accept an input of shape (B,1) and return the same shape.
     """
-    # 1) perform a burnin if required
-    x_cur = timestepper(x, burnin_T) if burnin_T is not None else x
-
-    # 2) push the batch through φ_T once
-    y = timestepper(x_cur).detach()   # (B, 1)
+    # 1) push the batch through φ_T once
+    y = timestepper(x).detach()   # (B, 1)
 
     # 2) sort both clouds along the particle axis
-    idx_x = x_cur[:, 0].argsort()             # (B,)
+    idx_x = x[:, 0].argsort()             # (B,)
     idx_y = y[:, 0].argsort()
-    diff  = x_cur[idx_x, 0] - y[idx_y, 0]     # (B,)
+    diff  = x[idx_x, 0] - y[idx_y, 0]     # (B,)
 
     # 3) ½ ‖ · ‖² averaged over particles
     loss  = 0.5 * diff.pow(2).mean()      # scalar
@@ -81,7 +77,7 @@ def wasserstein_adam(
             x_sub = X_param[idx]
             
             opt.zero_grad()
-            loss = w2_loss_1d(x_sub, timestepper, burnin_T=None)
+            loss = w2_loss_1d(x_sub, timestepper)
             loss.backward()
             if X_param.grad is not None:
                 grad_norm = X_param.grad.norm().item()
@@ -118,7 +114,6 @@ def wasserstein_newton_krylov(
     maxiter: int,
     rdiff : float,
     line_search : str | None = 'wolfe',
-    burnin_T = None,
     device=pt.device("cpu"),
     dtype=pt.float64,
     store_directory: str | None = None
@@ -132,7 +127,7 @@ def wasserstein_newton_krylov(
         X = pt.tensor(x, device=device, dtype=dtype, requires_grad=True).reshape((N,1))
 
         # Compute the loss
-        loss = w2_loss_1d(X, timestepper, burnin_T)
+        loss = w2_loss_1d(X, timestepper)
 
         # Compute gradient w.r.t. Xn
         grad, = pt.autograd.grad(loss, X)
@@ -167,7 +162,7 @@ def wasserstein_newton_krylov(
     tol = 1.e-14
     iterates.append(x0)
     try:
-        x_inf = opt.newton_krylov(F, x0, rdiff=rdiff, f_tol=tol, maxiter=maxiter, line_search=line_search, callback=callback, verbose=True)
+        x_inf = opt.newton_krylov(F, x0, rdiff=rdiff, f_tol=tol, maxiter=maxiter, line_search=line_search, callback=callback, verbose=False)
     except opt.NoConvergence as e:
         x_inf = e.args[0]
 

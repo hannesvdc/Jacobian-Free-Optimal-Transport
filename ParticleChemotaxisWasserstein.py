@@ -4,8 +4,9 @@ import gc
 import math
 import torch as pt
 import numpy as np
-import scipy.optimize as opt
 import matplotlib.pyplot as plt
+
+from concurrent.futures import ThreadPoolExecutor
 
 import Wasserstein1DOptimizers as wopt
 
@@ -88,43 +89,6 @@ def timeEvolution():
     plt.grid(True)
     plt.legend()
     plt.show()
-
-def test_w2_helpers():
-    """Compute ½ W₂² and grad for one mini-batch and print diagnostics."""
-    device = pt.device("mps")
-    dtype = pt.float32
-
-    # Physical functions defining the problem
-    S = lambda x: pt.tanh(x)
-    dS = lambda x: 1.0 / pt.cosh(x)**2
-    chi = lambda s: 1 + 0.5 * s**2
-    D = 0.1
-    dist = lambda x: pt.exp( (S(x) + S(x)**3 / 6.0) / D)
-
-    # Initial distribution of particles (Invariant Measure)
-    N = 10**4
-    X0_list = sampleInvariantMCMC(dist, N)
-    X0 = pt.tensor(X0_list).reshape((N,1)).to(device=device, dtype=dtype)
-
-    # Biuld the timestepper
-    dt = 1.e-3
-    T_psi = 1.0
-    stepper = lambda X: timestepper(X, S, dS, chi, D, dt, T_psi, device=device, dtype=dtype)
-
-    # loss only
-    batch_size = N
-    loss_val = wopt._call_loss(X0, stepper, batch_size, device)
-    print(f"½ W₂²  (call_loss)     : {loss_val.item():.3e}")
-
-    # Plot histogram of the push-forward versus X
-    with pt.no_grad():
-        y_plot = stepper(X0)
-        plt.hist(X0.cpu().numpy(), bins=80, alpha=0.5, label="X(t)", density=True)
-        plt.hist(y_plot.cpu().numpy(), bins=80, alpha=0.5, label="φ_T(X)", density=True)
-        plt.xlim((-10, 10))
-        plt.title("Mini-batch before vs. after φ_T")
-        plt.legend()
-        plt.show()
 
 def calculateSteadyStateAdam():
     device = pt.device("mps")
@@ -216,15 +180,14 @@ def calculateSteadyStateNewtonKrylov():
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
     T_psi = 1.0
-    burnin_T = None
     device = pt.device('cpu')
     dtype = pt.float64
     def stepper(X : pt.Tensor, T : float = T_psi) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
     rdiff = 1.e-1 # the epsilon parameter
-    maxiter = 50
+    maxiter = 100
     line_search = 'wolfe'
-    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
+    x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, line_search, device, dtype, store_directory=None)
 
     # Plot the steady-state and the analytic steady-state
     x_array = pt.linspace(-L, L, 1000)
@@ -252,7 +215,6 @@ def calculateSteadyStateNewtonKrylov():
     plt.show()
 
 def findOptimalNKParameters():
-    store_directory = "./Results/"
 
     # Physical functions defining the problem. These have to be torch functions 
     # because they are called in the timesteper.
@@ -264,84 +226,34 @@ def findOptimalNKParameters():
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
     T_psi = 1.0
-    burnin_T = None
     device = pt.device('cpu')
     dtype = pt.float64
-    maxiter = 50
+    maxiter = 100
     line_search = 'wolfe'
     def stepper(X : pt.Tensor, T : float = T_psi) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
 
     # Initial condition: Gaussian (mean 5, stdev 2) with correct boundary conditions. Numpy.
-    N_array = [10**4, 2*10**4, 4*10**4, 8*10**4, 10**5]
-    rdiff_array = [1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]
-    for N in N_array:
-        for rdiff in rdiff_array:
-            print('N =', N, ' rdiff =', rdiff)
+    N = 10_000
+    x0 = np.random.normal(5.0, 2.0, N)
+    x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
+    x0 = np.where(x0 > L, 2 * L - x0, x0)
 
-            x0 = np.random.normal(5.0, 2.0, N)
-            x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
-            x0 = np.where(x0 > L, 2 * L - x0, x0)
+    # Parallelize looping over rdiff
+    rdiffs = [1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]
+    def run_one(rdiff):
+        print('rdiff', rdiff)
+        x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, line_search, device, dtype, store_directory=None)
+        return losses
+    with ThreadPoolExecutor() as ex:
+        total_losses = list(ex.map(run_one, rdiffs))
 
-            x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
-
-            # Apply boundary conditions just to be sure.
-            x_inf = np.where(x_inf < -L, 2 * (-L) - x_inf, x_inf)
-            x_inf = np.where(x_inf > L, 2 * L - x_inf, x_inf)
-
-            # Store the loss and grad_norm history
-            if store_directory is not None:
-                filename = os.path.join(store_directory or ".", f"wasserstein_newton_krylov_losses_eps={rdiff}_N={N}.npy")
-                data = np.stack((np.array(losses), np.array(grad_norms)), axis=0)
-                np.save(filename, data)
-
-def plotOptimalNKParameters():
-    store_directory = "./Results/"
-
-    # Initialize results matrix
-    N_array = [10**4, 2*10**4, 4*10**4, 8*10**4, 10**5]
-    rdiff_array = [1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e-1, 1.0, 10.0]
-    loss_surface = np.full((len(N_array), len(rdiff_array)), np.nan)
-    grad_surface = np.full((len(N_array), len(rdiff_array)), np.nan)
-
-    # Load data
-    for i, N in enumerate(N_array):
-        for j, rdiff in enumerate(rdiff_array):
-            filename = os.path.join(store_directory, f"wasserstein_newton_krylov_losses_eps={rdiff}_N={N}.npy")
-            if os.path.exists(filename):
-                data = np.load(filename)
-                final_loss = data[0, -1]  # first row = losses
-                final_grad = data[1, -1]
-                loss_surface[i, j] = final_loss
-                grad_surface[i, j] = final_grad
-            else:
-                print(f"File not found: {filename}")
-
-    # Convert to log10 for plotting (avoid log(0) issues)
-    log_Ns = np.log10(N_array)
-    log_rdiffs = np.log10(rdiff_array)
-    log_loss = np.log10(loss_surface)
-    log_grad = np.log10(grad_surface)
-
-    # Plot
-    c_loss = plt.pcolormesh(log_rdiffs, log_Ns, log_loss, shading='auto', cmap='viridis')
-    plt.colorbar(c_loss)
-    plt.xlabel(r"$\log_{10}(\varepsilon)$")
-    plt.ylabel(r"$\log_{10}(N)$")
-    plt.title("Final Wasserstein Losses")
-    plt.xticks(log_rdiffs, labels=[f"{r:.0e}" for r in rdiff_array])
-    plt.yticks(log_Ns, labels=[str(N) for N in N_array])
-    plt.tight_layout()
-
-    plt.figure()
-    c_grad = plt.pcolormesh(log_rdiffs, log_Ns, log_grad, shading='auto', cmap='viridis')
-    plt.colorbar(c_grad)
-    plt.xlabel(r"$\log_{10}(\varepsilon)$")
-    plt.ylabel(r"$\log_{10}(N)$")
-    plt.title("Final Wasserstein Gradient Norms")
-    plt.xticks(log_rdiffs, labels=[f"{r:.0e}" for r in rdiff_array])
-    plt.yticks(log_Ns, labels=[str(N) for N in N_array])
-    plt.tight_layout()
+    # Plot the losses for every rdiff
+    for index in range(len(rdiffs)):
+        iterations = np.arange(len(total_losses[index]))
+        plt.semilogy(iterations, total_losses[index], label=f"rdiff = {rdiffs[index]}")
+    plt.xlabel('Iteration')
+    plt.legend()
     plt.show()
 
 def plotAdamSteadyState():
@@ -435,14 +347,10 @@ if __name__ == '__main__':
             print('This optimizer is not supported.')
     elif args.experiment == 'optimal_parameters':
         findOptimalNKParameters()
-    elif args.experiment == 'plot_optimal_parameters':
-        plotOptimalNKParameters()
     elif args.experiment == 'plot-steady-state':
         if args.optimizer == 'adam':
             plotAdamSteadyState()
         else:
             print('Choose an optimizer who\'s steady state to show')
-    elif args.experiment == 'test':
-        test_w2_helpers()
     else:
         print("This experiment is not supported. Choose either 'evolution', 'test', or 'steady-state'.")
