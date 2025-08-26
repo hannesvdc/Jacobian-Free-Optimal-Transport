@@ -67,6 +67,8 @@ def particles_from_cdf(grid: np.ndarray,
     particles = np.zeros(N)
     for k, p in enumerate(probs):
         j = np.searchsorted(cdf, p)
+        if j == len(grid):
+            print('Index error', j, p, cdf[-1])
         xl, xr = grid[j-1], grid[j]
 
         if j == len(grid)-1 and spline(xr) < p:

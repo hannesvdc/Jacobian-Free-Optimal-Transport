@@ -197,7 +197,7 @@ def calculateSteadyStateNewtonKrylov():
     language, but we need to explicitely take care of conversions. Also, this is a CPU function
     because numpy does not provide support for the Apple Neural Engine.
     """
-    store_directory = "./Results/"
+    print('Computing steady state using Newton-Krylov')
 
     # Physical functions defining the problem. These have to be torch functions 
     # because they are called in the timesteper.
@@ -223,7 +223,7 @@ def calculateSteadyStateNewtonKrylov():
         return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
     rdiff = 1.e-1 # the epsilon parameter
     maxiter = 50
-    line_search = None
+    line_search = 'wolfe'
     x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
 
     # Plot the steady-state and the analytic steady-state
@@ -264,10 +264,11 @@ def findOptimalNKParameters():
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
     T_psi = 1.0
-    burnin_T = 10 * dt
+    burnin_T = None
     device = pt.device('cpu')
     dtype = pt.float64
     maxiter = 50
+    line_search = 'wolfe'
     def stepper(X : pt.Tensor, T : float = T_psi) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
 
@@ -282,7 +283,7 @@ def findOptimalNKParameters():
             x0 = np.where(x0 < -L, 2 * (-L) - x0, x0)
             x0 = np.where(x0 > L, 2 * L - x0, x0)
 
-            x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, burnin_T, device, dtype, store_directory)
+            x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, line_search, burnin_T, device, dtype, store_directory=None)
 
             # Apply boundary conditions just to be sure.
             x_inf = np.where(x_inf < -L, 2 * (-L) - x_inf, x_inf)
@@ -428,7 +429,7 @@ if __name__ == '__main__':
     elif args.experiment == 'steady-state':
         if args.optimizer == 'adam':
             calculateSteadyStateAdam()
-        elif args.optimizer == 'newton_krylov':
+        elif args.optimizer == 'newton-krylov':
             calculateSteadyStateNewtonKrylov()
         else:
             print('This optimizer is not supported.')

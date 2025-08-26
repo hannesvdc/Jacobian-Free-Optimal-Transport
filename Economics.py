@@ -10,7 +10,6 @@ from concurrent.futures import ThreadPoolExecutor
 import EconomicAgentTimestepper as agents
 import EconomicPDETimestepper as pde
 import Wasserstein1DOptimizers as wopt
-import CDF1DOptimizers as cdfopt
 
 def compareAgentsAndPDE():
     N = 50000
