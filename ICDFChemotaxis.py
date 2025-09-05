@@ -155,6 +155,7 @@ def calculateSteadyState():
     analytic_cdf = analytic_dist.cumsum() * dx
     analytic_cdf /= analytic_cdf[-1]
     analytic_icdf = invertCDF(analytic_cdf, grid, percentile_grid)
+    samples_from_analytic_icdf = particles_from_icdf(percentile_grid, analytic_icdf, N, boundary)
     analytic_icdf = np.concatenate(([-L], analytic_icdf, [L]))
 
     spline = PchipInterpolator(np.concatenate(([0.0], percentile_grid, [1.0])), np.concatenate(([-L], icdf_inf, [L])), extrapolate=False)
@@ -173,7 +174,7 @@ def calculateSteadyState():
 
     # Also plot the particles
     plt.figure()
-    plt.hist(samples_from_icdf, density=True, bins=int(math.sqrt(N)), label='Particles from ICDF Timestepper')
+    plt.hist(samples_from_analytic_icdf, density=True, bins=int(math.sqrt(N)), label='Particles from ICDF Timestepper')
     plt.plot(grid, analytic_dist, label='Analytic Steady-State Distribution')
     plt.legend()
     plt.grid()
@@ -193,7 +194,7 @@ def testICDFSampling():
     D = 0.1
 
     N = 10000
-    n_points = 1000
+    n_points = 100
     percentile_grid = (np.arange(n_points) + 0.5) / n_points
     boundary = ((0.0, -L), (1.0, L))
 

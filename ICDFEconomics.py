@@ -59,7 +59,7 @@ def ICDFNewtonKrylov():
 
     # Sample particles and build the initial CDF
     n_cdf_points = 101
-    n_icdf_points = 100
+    n_icdf_points = 1000
     cdf_grid = np.linspace(-1.0, 1.0, n_cdf_points)
     percentile_grid = (np.arange(n_icdf_points) + 0.5) / n_icdf_points
     sigma0 = 0.1
