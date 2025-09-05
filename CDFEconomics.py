@@ -49,7 +49,7 @@ def CDFNewtonKrylov():
     print('initial cdf', cdf0)
 
     # Find the steady-state CDF
-    maxiter = 100
+    maxiter = 20
     rdiff = 1e-1
     cdf_inf, losses = cdfopt.cdf_newton_krylov(cdf0, grid, agent_timestepper, maxiter, rdiff, N)
     particles_from_cdf_inf = cdfopt.particles_from_cdf(grid, cdf_inf, N)
@@ -79,7 +79,7 @@ def CDFNewtonKrylov():
 
     # Plot the partilces sampled from the ICDF, and the analytic invariant density
     plt.figure()
-    plt.hist(particles_from_cdf_inf, density=True, bins=int(math.sqrt(N)), label='Particles from CDF')
+    plt.hist(particles_from_cdf_inf, density=True, bins=100, label='Particles from CDF')
     plt.plot(x_centers, rho_nk, label='Invariant Density')
     plt.xlabel(r'$x$')
     plt.legend()

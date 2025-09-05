@@ -70,7 +70,7 @@ def ICDFNewtonKrylov():
 
     # Find the steady-state CDF
     boundary = ((0.0, -1.0), (1.0, 1.0))
-    maxiter = 100
+    maxiter = 20
     rdiff = 1e-1
     icdf_inf, losses = icdfopt.icdf_newton_krylov(icdf0, percentile_grid, agent_timestepper, maxiter, rdiff, N, boundary)
 
@@ -105,7 +105,7 @@ def ICDFNewtonKrylov():
     plt.legend()
 
     plt.figure()
-    plt.hist(particles_from_icdf_inf, density=True, bins=int(math.sqrt(Nplot)), label='Particles from Invariant ICDF')
+    plt.hist(particles_from_icdf_inf, density=True, bins=100, label='Particles from Invariant ICDF')
     plt.plot(x_centers, rho_nk, label='Invariant Density')
     plt.xlabel(r'$x$')
     plt.legend()
