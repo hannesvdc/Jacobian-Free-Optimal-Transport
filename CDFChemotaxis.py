@@ -112,6 +112,7 @@ def calculateSteadyState():
     maxiter = 20
     rdiff = 10**(-1)
     cdf_inf, losses = cdf_newton_krylov(cdf_0, grid, timestepper, maxiter, rdiff, N)
+    particles_from_cdf_inf = particles_from_cdf(grid, cdf_inf, N)
 
     # Plot the initial and final density, as well as the true steady-state distribution
     analytic_dist = np.exp( (S(grid) + S(grid)**3 / 6.0) / D)
@@ -124,6 +125,13 @@ def calculateSteadyState():
     plt.plot(grid, cdf_inf, linestyle='--', label='Newton-Krylov CDF')
     plt.legend()
     plt.grid()
+
+    # Also plot the particles coming from the invariant CDF
+    plt.figure()
+    plt.hist(particles_from_cdf_inf, density=True, bins=1000, label='Particles from Optimized CDF')
+    plt.plot(grid, analytic_dist, label='Analytic Density')
+    plt.xlabel(r'$x$')
+    plt.legend()
 
     # Plot the losses
     plt.figure()
