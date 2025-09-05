@@ -34,7 +34,7 @@ def icdf_on_percentile_grid(particles : np.ndarray,
 def particles_from_icdf(percentile_grid : np.ndarray,
                         icdf : np.ndarray,
                         N : int,
-                        boundary = ((0.0, -20), (1.0, 20))) -> np.ndarray:
+                        boundary : Tuple[Tuple[float,float], Tuple[float,float]]) -> np.ndarray:
     """
     Sample a given inverse cumulative density function evaluated in a precentile grid.
     We first build a spline interpolator of the ICDF, and then evaluate it in N 
@@ -54,9 +54,10 @@ def particles_from_icdf(percentile_grid : np.ndarray,
     particles: (N,) ndarray
         Locations of the new samples / percentiles
     """
+    assert len(boundary) > 0
 
     # build a monotone cubic spline interpolator
-    spline = PchipInterpolator(np.concatenate(([0.0], percentile_grid, [1.0])), np.concatenate(([-10.0], icdf, [10.0])), extrapolate=False)
+    spline = PchipInterpolator(np.concatenate(([boundary[0][0]], percentile_grid, [boundary[1][0]])), np.concatenate(([boundary[0][1]], icdf, [boundary[1][1]])), extrapolate=False)
 
     # target percentiles (k+0.5) / N
     probs = (np.arange(N) + 0.5) / N
@@ -72,11 +73,12 @@ def icdf_newton_krylov(
         particle_timestepper: Callable[[np.ndarray], np.ndarray],
         maxiter: int,
         rdiff: float,
-        N: int) -> Tuple[np.ndarray, List]:
+        N: int,
+        boundary : Tuple[Tuple[float,float], Tuple[float,float]]) -> Tuple[np.ndarray, List]:
     
     # Create the icdf to icdf timestepper
     def timestepper(icdf):
-        particles = particles_from_icdf(percentile_grid, icdf, N)
+        particles = particles_from_icdf(percentile_grid, icdf, N, boundary=boundary)
         new_particles = particle_timestepper(particles)
         icdf_new = icdf_on_percentile_grid(new_particles, percentile_grid)
         return icdf_new
