@@ -59,7 +59,7 @@ def ICDFNewtonKrylov():
 
     # Sample particles and build the initial CDF
     n_cdf_points = 101
-    n_icdf_points = 1000
+    n_icdf_points = 100
     cdf_grid = np.linspace(-1.0, 1.0, n_cdf_points)
     percentile_grid = (np.arange(n_icdf_points) + 0.5) / n_icdf_points
     sigma0 = 0.1
@@ -73,7 +73,9 @@ def ICDFNewtonKrylov():
     maxiter = 100
     rdiff = 1e-1
     icdf_inf, losses = icdfopt.icdf_newton_krylov(icdf0, percentile_grid, agent_timestepper, maxiter, rdiff, N, boundary)
-    particles_from_icdf_inf = icdfopt.particles_from_icdf(percentile_grid, icdf_inf, N, boundary)
+
+    Nplot = 10**6
+    particles_from_icdf_inf = icdfopt.particles_from_icdf(percentile_grid, icdf_inf, Nplot, boundary)
 
     # Calculate the final CDF
     sigma0_pde = 1.0
@@ -91,17 +93,19 @@ def ICDFNewtonKrylov():
     cdf_nk = from_density_to_cdf(rho_nk, x_centers, cdf_grid)
     icdf_nk = invertCDF(cdf_nk, cdf_grid, percentile_grid)
     icdf_nk = np.concatenate(([boundary[0][1]], icdf_nk, [boundary[1][1]]))
-
+    
     # Plot both optimized ICDFs
+    icdf0 = np.concatenate(([boundary[0][1]], icdf0, [boundary[1][1]]))
     icdf_inf = np.concatenate(([boundary[0][1]], icdf_inf, [boundary[1][1]]))
     percentile_grid = np.concatenate(([boundary[0][0]], percentile_grid, [boundary[1][0]]))
+    plt.plot(percentile_grid, icdf0, label='Initial ICDF')
     plt.plot(percentile_grid, icdf_nk, label='Exact Invariant ICDF')
     plt.plot(percentile_grid, icdf_inf, label='Optimized ICDF')
     plt.xlabel(r'$p$')
     plt.legend()
 
     plt.figure()
-    plt.hist(particles_from_icdf_inf, density=True, bins=int(math.sqrt(N)), label='Particles from Invariant ICDF')
+    plt.hist(particles_from_icdf_inf, density=True, bins=int(math.sqrt(Nplot)), label='Particles from Invariant ICDF')
     plt.plot(x_centers, rho_nk, label='Invariant Density')
     plt.xlabel(r'$x$')
     plt.legend()
