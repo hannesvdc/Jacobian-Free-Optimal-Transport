@@ -71,11 +71,12 @@ def timeEvolution():
     icdf0 = icdf_on_percentile_grid(particles, percentile_grid)
 
     # Build the density-to-density timestepper
+    boundary = ((0.0, -L), (1.0, L))
     N = 10**5
     dt = 1.e-3
     T_psi = 1.0
     def icdf_timestepper(icdf):
-        particles = particles_from_icdf(percentile_grid, icdf, N)
+        particles = particles_from_icdf(percentile_grid, icdf, N, boundary=boundary)
         new_particles = particle_timestepper(particles, S, dS, chi, D, dt, T_psi, rng)
         icdf_new = icdf_on_percentile_grid(new_particles, percentile_grid)
         return icdf_new
@@ -88,7 +89,7 @@ def timeEvolution():
         print('t =', n*T_psi)
         icdf = icdf_timestepper(icdf)
     print('t =', T)
-    samples_from_icdf = particles_from_icdf(percentile_grid, icdf, N)
+    samples_from_icdf = particles_from_icdf(percentile_grid, icdf, N, boundary)
 
     # Plot the initial and final density, as well as the true steady-state distribution
     dx = 2.0 * L / 1000
@@ -138,10 +139,11 @@ def calculateSteadyState():
     timestepper = lambda X: particle_timestepper(X, S, dS, chi, D, dt, T_psi, rng)
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
+    boundary = ((0.0, -L), (1.0, L))
     maxiter = 20
     rdiff = 10**(-1)
-    icdf_inf, losses = icdf_newton_krylov(icdf0, percentile_grid, timestepper, maxiter, rdiff, N)
-    samples_from_icdf = particles_from_icdf(percentile_grid, icdf_inf, N)
+    icdf_inf, losses = icdf_newton_krylov(icdf0, percentile_grid, timestepper, maxiter, rdiff, N, boundary)
+    samples_from_icdf = particles_from_icdf(percentile_grid, icdf_inf, N, boundary)
     print(samples_from_icdf)
 
     # Plot the initial and final density, as well as the true steady-state distribution
@@ -184,6 +186,46 @@ def calculateSteadyState():
     plt.title('Newton-Krylov Loss')
     plt.show()
 
+def testICDFSampling():
+
+    # Physical functions defining the problem. 
+    S = lambda x: np.tanh(x)
+    D = 0.1
+
+    N = 10000
+    n_points = 1000
+    percentile_grid = (np.arange(n_points) + 0.5) / n_points
+    boundary = ((0.0, -L), (1.0, L))
+
+    # Calculate the analytic density
+    dx = 2.0 * L / 1000
+    grid = np.linspace(-L, L, 1001)
+    analytic_dist = np.exp( (S(grid) + S(grid)**3 / 6.0) / D)
+    Z_dist = np.trapz(analytic_dist, grid)
+    analytic_dist /= Z_dist
+    analytic_cdf = analytic_dist.cumsum() * dx
+    analytic_cdf /= analytic_cdf[-1]
+    analytic_icdf = invertCDF(analytic_cdf, grid, percentile_grid)
+    particles_from_analytic_icdf = particles_from_icdf(percentile_grid, analytic_icdf, N, boundary)
+    analytic_icdf = np.concatenate(([-L], analytic_icdf, [L]))
+
+    # Plot the ICDFs first
+    percentile_grid = np.concatenate(([boundary[0][0]], percentile_grid, [boundary[1][0]]))
+    plt.plot(percentile_grid, analytic_icdf, label='Analytic ICDF')
+    plt.xlabel('percentiles')
+    plt.title('Sampling Test')
+    plt.grid()
+    plt.legend()
+
+    # Also plot the particles
+    plt.figure()
+    plt.hist(particles_from_analytic_icdf, density=True, bins=int(math.sqrt(N)), label='Particles from ICDF Timestepper')
+    plt.plot(grid, analytic_dist, label='Analytic Steady-State Distribution')
+    plt.title('Sampling Test')
+    plt.legend()
+    plt.grid()
+
+    plt.show()
 
 def parseArguments():
     import argparse
@@ -205,3 +247,5 @@ if __name__ == '__main__':
         timeEvolution()
     elif args.experiment == 'steady-state':
         calculateSteadyState()
+    elif args.experiment == 'test-sampling':
+        testICDFSampling()
