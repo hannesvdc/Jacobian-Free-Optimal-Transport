@@ -15,8 +15,8 @@ def icdf_on_percentile_grid(particles : np.ndarray,
     ----------
     particles : (N,) array_like
         Data points (need NOT be sorted).
-    percentiles  : (M,) array_like
-        Percentile grid with values between 0 and 1 (included)
+    percentiles : (n_grid,) array_like
+        Percentiles at which to evaluate the ICDF. Does not include 0 or 1.
 
     Returns
     -------
@@ -25,19 +25,16 @@ def icdf_on_percentile_grid(particles : np.ndarray,
     """
     N = len(particles)
 
-    if np.any((percentiles < 0) | (percentiles > 1)):
-        raise ValueError("percentiles must be in [0, 1]")
-
     # Sort the particles once in O(N log N)
     particles = np.sort(particles)
-    idx = np.ceil(percentiles * N).astype(int)
-    idx[idx == 0] = 1 # Solve boundary effects
+    indices = (percentiles * N).astype(int)
 
-    return particles[idx - 1]
+    return particles[indices]
 
 def particles_from_icdf(percentile_grid : np.ndarray,
                         icdf : np.ndarray,
-                        N : int) -> np.ndarray:
+                        N : int,
+                        boundary = ((0.0, -20), (1.0, 20))) -> np.ndarray:
     """
     Sample a given inverse cumulative density function evaluated in a precentile grid.
     We first build a spline interpolator of the ICDF, and then evaluate it in N 
@@ -59,14 +56,13 @@ def particles_from_icdf(percentile_grid : np.ndarray,
     """
 
     # build a monotone cubic spline interpolator
-    spline = PchipInterpolator(percentile_grid, icdf, extrapolate=False)
+    spline = PchipInterpolator(np.concatenate(([0.0], percentile_grid, [1.0])), np.concatenate(([-10.0], icdf, [10.0])), extrapolate=False)
 
     # target percentiles (k+0.5) / N
     probs = (np.arange(N) + 0.5) / N
 
     # Evaluate the ICDF in the new percentiles
     particles = spline(probs)
-    print('Boundary particle', particles[-1])
 
     return particles
 
@@ -88,7 +84,7 @@ def icdf_newton_krylov(
         psi_val = icdf - timestepper(icdf)
         print('psi_val', np.linalg.norm(psi_val))
         return psi_val
-    
+
     # Create a callback to store intermediate losses and particles
     losses = [np.linalg.norm(psi(icdf0))]
     icdfs = [np.copy(icdf0)]
