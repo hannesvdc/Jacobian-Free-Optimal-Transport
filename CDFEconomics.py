@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
@@ -51,6 +52,7 @@ def CDFNewtonKrylov():
     maxiter = 100
     rdiff = 1e-1
     cdf_inf, losses = cdfopt.cdf_newton_krylov(cdf0, grid, agent_timestepper, maxiter, rdiff, N)
+    particles_from_cdf_inf = cdfopt.particles_from_cdf(grid, cdf_inf, N)
 
     # Calculate the final CDF
     sigma0_pde = 1.0
@@ -72,6 +74,13 @@ def CDFNewtonKrylov():
     plt.plot(grid, cdf_inf, label='Optimized CDF')
     plt.plot(grid, cdf_nk, label='Steady-State CDF')
     plt.plot(x_centers, rho_nk, label='Steady-State Density (from PDE)')
+    plt.xlabel(r'$x$')
+    plt.legend()
+
+    # Plot the partilces sampled from the ICDF, and the analytic invariant density
+    plt.figure()
+    plt.hist(particles_from_cdf_inf, density=True, bins=int(math.sqrt(N)), label='Particles from CDF')
+    plt.plot(x_centers, rho_nk, label='Invariant Density')
     plt.xlabel(r'$x$')
     plt.legend()
  
