@@ -101,6 +101,7 @@ def cdf_newton_krylov(
         return psi_val
     
     # Create a callback to store intermediate losses and particles
+    print('Initialing loss')
     losses = [np.linalg.norm(psi(cdf0))]
     cdfs = [np.copy(cdf0)]
     def callback(xk, fk):
@@ -114,6 +115,7 @@ def cdf_newton_krylov(
     line_search = 'wolfe'
     tol = 1.e-14
     try:
+        print('Runnig NK')
         x_inf = opt.newton_krylov(psi, cdf0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
     except KeyboardInterrupt:
         print('Stopping Newton-Krylov due to user interrupt')

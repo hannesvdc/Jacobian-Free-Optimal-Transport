@@ -91,7 +91,7 @@ def calculateSteadyState():
     D = 0.1
 
     # Initial density: use a truncated Gaussian for now
-    n_points = 1001
+    n_points = 101
     grid = np.linspace(-L, L, n_points)
     dx = 2.0 * L / (n_points - 1)
     mean = 5.0
@@ -111,6 +111,7 @@ def calculateSteadyState():
     N = 10**6
     maxiter = 20
     rdiff = 10**(-1)
+    print('Starting newton krylov')
     cdf_inf, losses = cdf_newton_krylov(cdf_0, grid, timestepper, maxiter, rdiff, N)
     particles_from_cdf_inf = particles_from_cdf(grid, cdf_inf, N)
 
@@ -120,6 +121,7 @@ def calculateSteadyState():
     analytic_dist /= Z_dist
     analytic_cdf = analytic_dist.cumsum() * dx
     analytic_cdf /= analytic_cdf[-1]
+    particles_from_analytic_cdf = particles_from_cdf(grid, analytic_cdf, N)
     plt.plot(grid, cdf_0, label='Initial CDF')
     plt.plot(grid, analytic_cdf, label='Analytic Steady-State CDF')
     plt.plot(grid, cdf_inf, linestyle='--', label='Newton-Krylov CDF')
@@ -128,7 +130,7 @@ def calculateSteadyState():
 
     # Also plot the particles coming from the invariant CDF
     plt.figure()
-    plt.hist(particles_from_cdf_inf, density=True, bins=1000, label='Particles from Optimized CDF')
+    plt.hist(particles_from_analytic_cdf, density=True, bins=1000, label='Particles from Optimized CDF')
     plt.plot(grid, analytic_dist, label='Analytic Density')
     plt.xlabel(r'$x$')
     plt.legend()

@@ -163,11 +163,13 @@ def calculateSteadyState():
     spline_values = spline(spline_grid)
 
     # Plot the ICDFs first
+    icdf0 = np.concatenate(([-L], icdf0, [L]))
     icdf_inf = np.concatenate(([-L], icdf_inf, [L]))
     percentile_grid = np.concatenate(([0.0], percentile_grid, [1.0]))
+    plt.plot(percentile_grid, icdf0, label='Initial ICDF')
     plt.plot(percentile_grid, analytic_icdf, label='Analytic ICDF')
     plt.plot(percentile_grid, icdf_inf, label="ICDF Timestepper")
-    plt.plot(spline_grid, spline_values, label='Spline Interpolation of ICDF')
+    #plt.plot(spline_grid, spline_values, label='Spline Interpolation of ICDF')
     plt.xlabel('percentiles')
     plt.grid()
     plt.legend()
