@@ -66,7 +66,7 @@ def angular_cdf_from_2d_cdf(cdf_2d : RectBivariateSpline,
     # Build the CDF from density values
     dtheta = np.diff(angular_grid)
     F = np.concatenate(([0.0], np.cumsum(0.5*(pdf_values[:-1] + pdf_values[1:]) * dtheta)))
-    F /= F[-1]  # normalize to [0,1]
+    F /= F[-1]
     
     return F
 
