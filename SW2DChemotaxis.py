@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy.interpolate import RectBivariateSpline
-import time
 
 from SW2DOptimizers import sw_newton_krylov, angular_cdf_from_2d_cdf, particles_from_angular_and_radial_cdf, empirical_joint_cdf_on_grid
 from CDF2DOptimizers import particles_from_joint_cdf_cubic
@@ -108,11 +107,7 @@ def timeEvolution():
         cdf_spline = RectBivariateSpline(x_grid, y_grid, cdf, kx=3, ky=3, s=0)
         angular_cdf_values = angular_cdf_from_2d_cdf(cdf_spline, angular_grid)
         particles = particles_from_angular_and_radial_cdf(cdf_spline, angular_grid, angular_cdf_values, N)
-        start = time.time()
-        print('Starting time evolution')
         new_particles = timestepper(particles, dt, T_psi, rng, A, R, B, alpha, y_shift, L=4.0)
-        end = time.time()
-        print('Evolution time', end - start)
         return empirical_joint_cdf_on_grid(new_particles, x_grid, y_grid)
     
     # Do timestepping
@@ -126,6 +121,7 @@ def timeEvolution():
 
     # Plotting
     plotCDF(x_grid, y_grid, cdf, N, cdf0=cdf0)
+    plt.legend()
     plt.show()
 
 def calculateSteadyState():
@@ -167,6 +163,8 @@ def calculateSteadyState():
 
     # Plot the CDF and the losses
     plotCDF(x_grid, y_grid, cdf_inf, N, cdf0=cdf0)
+    plt.legend()
+
     plt.figure()
     plt.semilogy(np.arange(len(losses)), losses)
     plt.ylabel('Loss')
@@ -219,9 +217,9 @@ def plotCDF(x_grid, y_grid, cdf, N, cdf0=None):
     X, Y = np.meshgrid(x_grid, y_grid)
     fig3d_cdf = plt.figure(figsize=(7, 6))
     ax3d_cdf  = fig3d_cdf.add_subplot(111, projection="3d", proj_type="ortho")
-    ax3d_cdf.plot_surface(X, Y, cdf, label='Invariant CDF') #type: ignore
+    ax3d_cdf.plot_surface(X, Y, cdf, label='Invariant CDF', alpha=0.5) #type: ignore
     if cdf0 is not None:
-        ax3d_cdf.plot_surface(X, Y, cdf0, label='Initial CDF') #type: ignore
+        ax3d_cdf.plot_surface(X, Y, cdf0, label='Initial CDF', alpha=0.5) #type: ignore
     ax3d_cdf.set_xlabel(r'$x$')
     ax3d_cdf.set_ylabel(r'$y$')
     ax3d_cdf.set_zlabel('CDF') #type: ignore
