@@ -22,7 +22,6 @@ def empirical_joint_cdf_on_grid(particles: np.ndarray,
     F_table : (Kx, Ky) ndarray
         Joint CDF evaluated on the tensor grid.
     """
-    N = particles.shape[0]
     x_edges = np.concatenate(([-np.inf], x_grid))
     y_edges = np.concatenate(([-np.inf], y_grid))
     H, *_ = np.histogram2d(particles[:, 0], particles[:, 1],
