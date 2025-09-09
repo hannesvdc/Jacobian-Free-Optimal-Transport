@@ -5,6 +5,7 @@ import scipy.optimize as opt
 from typing import Tuple, List, Callable
 
 xy_max = 4
+EPS_reg = 1e-5
 
 def empirical_joint_cdf_on_grid(particles: np.ndarray,
                                 x_grid:    np.ndarray,
@@ -102,7 +103,7 @@ def particles_from_angular_and_radial_cdf(cdf_2d : RectBivariateSpline,
         r_nodes_int = r_max * t
         x_values = r_nodes_int * c
         y_values = r_nodes_int * s
-        rho_values = Fxy(x_values, y_values, grid=False)
+        rho_values = np.clip(Fxy(x_values, y_values, grid=False), EPS_reg, None)
 
         # Do partial integration up to r for CDF calculations
         contributions = rho_values * r_nodes_int * (r_max * w01)

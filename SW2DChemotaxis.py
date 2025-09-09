@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy.interpolate import RectBivariateSpline
+import time
 
 from SW2DOptimizers import sw_newton_krylov, angular_cdf_from_2d_cdf, particles_from_angular_and_radial_cdf, empirical_joint_cdf_on_grid
 from CDF2DOptimizers import particles_from_joint_cdf_cubic
@@ -100,14 +101,18 @@ def timeEvolution():
     angular_grid = np.linspace(-np.pi, np.pi, 101)
 
     # Build the density-to-density timestepper
-    N = 10**6
+    N = 10**5
     dt = 1.e-3
     T_psi = 1.0
     def cdf_timestepper(cdf):
         cdf_spline = RectBivariateSpline(x_grid, y_grid, cdf, kx=3, ky=3, s=0)
         angular_cdf_values = angular_cdf_from_2d_cdf(cdf_spline, angular_grid)
         particles = particles_from_angular_and_radial_cdf(cdf_spline, angular_grid, angular_cdf_values, N)
+        start = time.time()
+        print('Starting time evolution')
         new_particles = timestepper(particles, dt, T_psi, rng, A, R, B, alpha, y_shift, L=4.0)
+        end = time.time()
+        print('Evolution time', end - start)
         return empirical_joint_cdf_on_grid(new_particles, x_grid, y_grid)
     
     # Do timestepping up to 500 seconds
