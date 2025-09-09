@@ -155,20 +155,20 @@ def calculateSteadyState():
 
     # Do a slight burn in for better initial
     N = 10**6
-    T_psi_cdf = 0.1
+    T_psi_cdf = 4.0
     def cdf_timestepper(cdf):
         cdf_spline = RectBivariateSpline(x_grid, y_grid, cdf, kx=3, ky=3, s=0)
         angular_cdf_values = angular_cdf_from_2d_cdf(cdf_spline, angular_grid)
         particles = particles_from_angular_and_radial_cdf(cdf_spline, angular_grid, angular_cdf_values, N)
         new_particles = timestepper(particles, dt, T_psi_cdf, rng, A, R, B, alpha, y_shift, L=4.0)
         return empirical_joint_cdf_on_grid(new_particles, x_grid, y_grid)
-    cdf0 = cdf_timestepper(cdf0)
+    cdf_init = cdf_timestepper(cdf0)
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
-    maxiter = 100
+    maxiter = 20
     rdiff = 10**(-1.0)
     line_search = 'wolfe'
-    cdf_inf, losses = sw_newton_krylov(cdf0, x_grid, y_grid, angular_grid, particle_timestepper, maxiter, rdiff, N, line_search)
+    cdf_inf, losses = sw_newton_krylov(cdf_init, x_grid, y_grid, angular_grid, particle_timestepper, maxiter, rdiff, N, line_search)
     print(cdf_inf.shape, x_grid.shape, y_grid.shape)
 
     # Plot the CDF and the losses

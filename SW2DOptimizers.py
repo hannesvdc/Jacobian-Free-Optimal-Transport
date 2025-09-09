@@ -57,7 +57,7 @@ def angular_cdf_from_2d_cdf(cdf_2d : RectBivariateSpline,
         r_nodes_int = r_max * t
         x_values = r_nodes_int * c
         y_values = r_nodes_int * s
-        rho_values = Fxy(x_values, y_values, grid=False)
+        rho_values = np.clip(Fxy(x_values, y_values, grid=False), EPS_reg, None)
 
         # Calculate the angular PDF by integrating over rays
         pdf_value = np.dot(rho_values * r_nodes_int, r_max * w01)
@@ -171,8 +171,9 @@ def sw_newton_krylov(
     except KeyboardInterrupt:
         print('Stopping Newton-Krylov due to user interrupt')
         x_inf = cdfs[-1]
-    except:
+    except Exception as e:
         print('Stopping Newton-Krylov because maximum number of iterations was reached.')
+        print(e)
         x_inf = cdfs[-1]
     x_inf = x_inf.reshape(x_grid_points, y_grid_points)
 
