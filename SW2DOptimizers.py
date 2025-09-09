@@ -34,41 +34,40 @@ def empirical_joint_cdf_on_grid(particles: np.ndarray,
     return F
 
 def angular_cdf_from_2d_cdf(cdf_2d : RectBivariateSpline,
-                            angular_grid : np.ndarray) -> np.ndarray:
-    
-    # Build the spline derivatives and angular integrand
-    Fx = cdf_2d.partial_derivative(dx=1, dy=0)
-    Fy = cdf_2d.partial_derivative(dx=0, dy=1)
-    def integrand(r_values : np.ndarray, 
-                  theta : float) -> np.ndarray:
-        x = r_values * np.cos(theta)
-        y = r_values * np.sin(theta)
-        return np.cos(theta) * Fx(x, y, grid=False) - np.sin(theta) * Fy(x, y, grid=False)
-    
+                                angular_grid : np.ndarray) -> np.ndarray:
+    Fxy = cdf_2d.partial_derivative(dx=1, dy=1)
+
     # Build a Gauss-Legendre integration algorithm for F along the rays
     n_radial_points = 64
-    gl_nodes, gl_weights = np.polynomial.legendre.leggauss(n_radial_points) # on [-1,1]
-    gl_nodes = 0.5 * (gl_nodes + 1.0) # Nodes on [0,1]
-    gl_weights = 0.5 * gl_weights # Weights on [0,1]
+    gn, gw = np.polynomial.legendre.leggauss(n_radial_points)
+    t = 0.5 * (gn + 1.0)      # nodes in [0,1]
+    w01 = 0.5 * gw            # weights on [0,1]
 
     # Iterate over every angle theta in angular_grid and compute J(theta).
     # Assumes theta = -np.pi and theta = np.pi are in `angular_grid`.
-    J_values = np.zeros_like(angular_grid)
+    pdf_values = np.zeros_like(angular_grid)
     for index in range(len(angular_grid)):
         theta = angular_grid[index]
-        r_max = xy_max / max(np.abs(np.cos(theta)), np.abs(np.sin(theta)))
-        r_values = r_max * gl_nodes
+        c = np.cos(theta)
+        s = np.sin(theta)
 
-        J_value = np.dot(integrand(r_values, theta), r_max * gl_weights)
-        J_values[index] = J_value
+        # Build the conditional/radial PDF
+        r_max = xy_max / max(np.abs(c), np.abs(s))
+        r_nodes_int = r_max * t
+        x_values = r_nodes_int * c
+        y_values = r_nodes_int * s
+        rho_values = Fxy(x_values, y_values, grid=False)
 
-    # Compute the angular CDF from J
-    angular_cdf_values = 0.5 * (J_values - J_values[0])
-    angular_cdf_values -= angular_cdf_values[0]
-    angular_cdf_values /= angular_cdf_values[-1]
-
-    # Do some clipping and return
-    return np.maximum.accumulate(np.clip(angular_cdf_values, 0.0, 1.0))
+        # Calculate the angular PDF by integrating over rays
+        pdf_value = np.dot(rho_values * r_nodes_int, r_max * w01)
+        pdf_values[index] = pdf_value
+    
+    # Build the CDF from density values
+    dtheta = np.diff(angular_grid)
+    F = np.concatenate(([0.0], np.cumsum(0.5*(pdf_values[:-1] + pdf_values[1:]) * dtheta)))
+    F /= F[-1]  # normalize to [0,1]
+    
+    return F
 
 def particles_from_angular_and_radial_cdf(cdf_2d : RectBivariateSpline,
                                           angular_grid : np.ndarray,
@@ -109,7 +108,7 @@ def particles_from_angular_and_radial_cdf(cdf_2d : RectBivariateSpline,
         contributions = rho_values * r_nodes_int * (r_max * w01)
         C = np.cumsum(contributions)
         r_nodes = np.concatenate(([0.0], r_nodes_int))
-        C = np.concatenate(([0.0, C]))
+        C = np.concatenate(([0.0], C))
 
         # Some post-processing on C
         F_radial = C / C[-1]
