@@ -133,6 +133,7 @@ def sw_newton_krylov(
     maxiter : int,
     rdiff : float,
     N : int,
+    tolerance : float,
     line_search : str | None = 'wolfe') -> Tuple[np.ndarray, List]:
 
     x_grid_points = len(x_grid)
@@ -165,9 +166,8 @@ def sw_newton_krylov(
         print(f"(N = {N}, rdiff = {rdiff}) Epoch {len(losses)}: psi_val = {psi_val}")
 
     # Solve F(x) = 0 using newton_krylov.
-    tol = 1.e-14
     try:
-        x_inf = opt.newton_krylov(psi, cdf0, f_tol=tol, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
+        x_inf = opt.newton_krylov(psi, cdf0, f_tol=tolerance, maxiter=maxiter, rdiff=rdiff, line_search=line_search, callback=callback, verbose=True)
     except KeyboardInterrupt:
         print('Stopping Newton-Krylov due to user interrupt')
         x_inf = cdfs[-1]

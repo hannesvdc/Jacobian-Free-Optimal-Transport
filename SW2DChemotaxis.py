@@ -143,7 +143,6 @@ def calculateSteadyState():
     prob_density = np.exp(-U)
     cdf0 = prob_density.cumsum(axis=0).cumsum(axis=1)
     cdf0 /= cdf0[-1,-1]
-    print('cdf0', cdf0)
 
     # Create an angular grid for sampling
     angular_grid = np.linspace(-np.pi, np.pi, 101)
@@ -165,11 +164,11 @@ def calculateSteadyState():
     cdf_init = cdf_timestepper(cdf0)
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
-    maxiter = 20
-    rdiff = 10**(-1.0)
+    maxiter = 100
+    rdiff = 2*10**(-1.0)
+    tolerance = 0.005
     line_search = 'wolfe'
-    cdf_inf, losses = sw_newton_krylov(cdf_init, x_grid, y_grid, angular_grid, particle_timestepper, maxiter, rdiff, N, line_search)
-    print(cdf_inf.shape, x_grid.shape, y_grid.shape)
+    cdf_inf, losses = sw_newton_krylov(cdf_init, x_grid, y_grid, angular_grid, particle_timestepper, maxiter, rdiff, N, tolerance, line_search)
 
     # Plot the CDF and the losses
     plotCDF(x_grid, y_grid, cdf_inf, N, cdf0=cdf0)
