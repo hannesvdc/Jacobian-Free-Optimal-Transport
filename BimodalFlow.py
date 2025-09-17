@@ -42,12 +42,11 @@ def estimateBimodalPotential():
     dpsi = lambda x: np.array([dbf(x) for dbf in nabla_basis_functions])
 
     # Generate a uniform particle distribution
-    N = 100001
+    N = 10000001
     X0 = np.linspace(xmin, xmax, N) # sorted
     hmin = 1.e-3
     hmax = 1.e-2
     beta = 1.e0
-    print('X0', X0)
 
     # Approximate the velocity field in X
     rng = np.random.RandomState()
@@ -72,10 +71,11 @@ def estimateBimodalPotential():
     print('U values', psi(X0).shape, theta.shape, U_values.shape)
 
     # Compare the analytic with estimated density
-    plt.plot(X0, v, label='Stochastic OT-Estimated Velocity Field')
-    plt.plot(X0, -dU_parametric(X0), label='Least-Squares Approximation of OT')
-    plt.plot(X0, -dU(X0), label='Analytic Velocity Field')
+    plt.plot(X0, v, label='Euler-OT Velocity Field')
+    #plt.plot(X0, -dU_parametric(X0), label='Least-Squares Approximation of OT')
+    plt.plot(X0, -dU(X0), linestyle='--', label='Analytic Velocity Field')
     plt.xlabel(r'$x$')
+    plt.ylabel(r'$v(x)$')
     plt.legend()
 
     plt.figure()
@@ -89,9 +89,10 @@ def estimateBimodalPotential():
     Z_exact = np.trapz(mu_exact, X0)
     mu_estimated = np.exp(-beta * U_values)
     Z_estimated = np.trapz(mu_estimated, X0)
-    plt.plot(X0, mu_exact / Z_exact, label='Exact Density')
-    plt.plot(X0, mu_estimated / Z_estimated, label='Estimated Density')
+    plt.plot(X0, mu_estimated / Z_estimated, label='Euler-OT Density')
+    plt.plot(X0, mu_exact / Z_exact, linestyle='--', label='Exact Density')
     plt.xlabel(r'$x$')
+    plt.ylabel(r'$\mu(x)$')
     plt.legend()
     plt.show()
 

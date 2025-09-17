@@ -77,7 +77,6 @@ def estimatePotentialEnergy():
     X0 = np.linspace(xmin, xmax, N) # sorted
     hmin = 1.e-2
     hmax = 1.e-1
-    print('X0', X0)
 
     # Approximate the velocity field in X
     rng = np.random.RandomState()
@@ -105,26 +104,28 @@ def estimatePotentialEnergy():
     dU = lambda x: -dp(x) / p(x)
 
     # Compare the analytic with estimated density
-    plt.plot(X0, v, label='Stochastic OT-Estimated Velocity Field')
-    plt.plot(X0, -dU_parametric(X0), label='Least-Squares Approximation of OT')
-    plt.plot(X0, -dU(X0), label='Potential Energy Gradient')
+    plt.plot(X0, -v, label='Euler-OT Velocity Field')
+    #plt.plot(X0, -dU_parametric(X0), label='Least-Squares Approximation of OT')
+    plt.plot(X0, -dU(X0), linestyle='--', label=r'Effective Potential Gradient $-\nabla \tilde{U}$')
     plt.xlabel(r'$x$')
+    plt.ylabel(r'$v(x)$')
     plt.legend()
 
     plt.figure()
     plt.plot(X0, U(X0), label=r'Effective Potential $U(x)$')
-    plt.plot(X0, U_values, linestyle='--', label='Estimated Potential fron Velocity Field')
+    plt.plot(X0, -U_values, linestyle='--', label='Euler-OT Potential')
     plt.xlabel(r'$x$')
     plt.legend()
 
     plt.figure()
     mu_exact = np.exp(-U(X0))
     Z_exact = np.trapz(mu_exact, X0)
-    mu_estimated = np.exp(-U_values)
+    mu_estimated = np.exp(U_values)
     Z_estimated = np.trapz(mu_estimated, X0)
-    plt.plot(X0, mu_exact / Z_exact, label='Exact Density')
-    plt.plot(X0, mu_estimated / Z_estimated, label='Estimated Density')
+    plt.plot(X0, mu_estimated / Z_estimated, label='Euler-OT Density')
+    plt.plot(X0, mu_exact / Z_exact, linestyle='--', label='Exact Density')
     plt.xlabel(r'$x$')
+    plt.ylabel(r'$\mu(x)$')
     plt.legend()
 
     plt.show()
