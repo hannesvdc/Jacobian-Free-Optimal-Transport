@@ -92,7 +92,10 @@ def steadyState(_return=False):
     dt = 1.e-3
     T_psi = 1.0
     F = lambda mu: psi(mu, S, chi, dt, T_psi)
-    mu_ss = opt.newton_krylov(F, mu0, f_tol=1.e-12, verbose=True)
+    errors = [lg.norm(F(mu0))]
+    def cb(x, f):
+        errors.append(lg.norm(F(x)))
+    mu_ss = opt.newton_krylov(F, mu0, f_tol=5.e-9, callback=cb, verbose=True)
     if _return:
         return mu_ss
     
@@ -102,11 +105,17 @@ def steadyState(_return=False):
     dist = dist / Z
 
     # Plot final distribution
-    plt.plot(x_array, mu_ss, label='Newton-Krylov')
+    plt.plot(x_array, mu_ss, label='Newton-Krylov Steady State')
     plt.plot(x_array, dist, linestyle='--', label='Analytic Steady State')
     plt.xlabel('x')
     plt.ylabel(r'$\mu(x)$')
-    plt.title('1D Drift-Diffusion with Simple Chemotactic Drift')
+    plt.grid(True)
+    plt.legend()
+
+    iterations = np.arange(len(errors))
+    plt.figure()
+    plt.semilogy(iterations, errors, label=r'Newton-Krylov Residual $||\psi(\mu_k)||$')
+    plt.xlabel('k')
     plt.grid(True)
     plt.legend()
     plt.show()

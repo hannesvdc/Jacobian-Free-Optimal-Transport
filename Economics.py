@@ -58,6 +58,50 @@ def compareAgentsAndPDE():
     plt.legend()
     plt.show()
 
+def pdeSteadyState():
+    eplus = 0.075
+    eminus = -0.072
+    vplus = 20
+    vminus = 20
+    gamma = 1
+    g = 38.0
+    sigma0 = 0.1
+
+    # PDE timestepper and optimizer
+    dt = 1.e-4
+    T_psi = 1.0
+    N_faces = 100
+    x_faces = np.linspace(-1.0, 1.0, N_faces)
+    x_centers = 0.5 * (x_faces[1:] + x_faces[:-1])
+    rho0 = np.exp(-x_centers**2 / (2.0 * sigma0**2)) / np.sqrt(2.0 * np.pi * sigma0**2)
+    def psi(rho):
+        return rho - pde.PDETimestepper(rho, x_faces, dt, T_psi, gamma, vplus, vminus, eplus, eminus, g)
+    rho_final = opt.newton_krylov(psi, rho0, f_tol=1e-12, verbose=True)
+    avg_pde_pos = np.trapz(rho_final * x_centers, x_centers)
+    print('Average PDE Position', avg_pde_pos)
+
+    # Also evolve the agents for a nice visual comparison.
+    N = 500_000
+    T = 100.0
+    dt_agents = 0.25
+    vpc = vplus
+    vmc = vminus
+    sigma0 = 0.1
+    x0 = np.random.normal(0, sigma0, N)
+    x0[x0 <= -1.0] = 0.0
+    x0[x0 >=  1.0] = 0.0
+    k = int(T / dt_agents)
+    x = agents.evolveAgentsNumpy(x0, k, dt_agents, gamma, vplus, vminus, vpc, vmc, eplus, eminus, g, N)
+    avg_agent_pos = np.average(x)
+    print('Average Agent Position', avg_agent_pos)
+
+    # Plot density versus histogram
+    plt.hist(x + avg_pde_pos - avg_agent_pos, bins=int(math.sqrt(N)), alpha=0.8, density=True, label="Evolved Agents")
+    plt.plot(x_centers, rho_final, label='Newton-Krylov')
+    plt.xlabel(r'$x$')
+    plt.legend()
+    plt.show()
+
 def agentSteadyStateAdam():
     # Model parameters
     N = 50_000
@@ -259,3 +303,5 @@ if __name__ == '__main__':
         agentSteadyStateNewtonKrylov()
     elif args.experiment == 'optimal-rdiff':
         optimalRDiff()
+    elif args.experiment == 'pde-steady-state':
+        pdeSteadyState()
