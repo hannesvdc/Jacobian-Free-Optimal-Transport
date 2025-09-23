@@ -114,8 +114,8 @@ def timestepper(
     return z
 
 def calculateSteadyStateWasserstein():
-    device = pt.device('cpu')
-    gen = pt.Generator()
+    device = pt.device('mps')
+    gen = pt.Generator(device=device)
     R = 2.0
     A = 2.0
     B = 0.5
@@ -123,11 +123,10 @@ def calculateSteadyStateWasserstein():
     y_shift = -0.5
 
     # Start with a standard normal Gaussian and sample particles
-    N = 10_000
+    N = 100_000
     L = 4.0
-    particles = MultivariateNormal(pt.Tensor([0.0, 0.0]), pt.eye(2)).rsample((N,))
+    particles = MultivariateNormal(pt.Tensor([0.0, 0.0]), pt.eye(2)).rsample((N,)).to(device=device)
     particles = reflect(particles, L)
-    print('particles shape', particles.shape)
 
     # Make the necessary objects for the W2 optimizer
     dt = 1e-3
@@ -155,9 +154,8 @@ def calculateSteadyStateWasserstein():
     plt.grid(True)
     plt.legend()
 
-    plt.figure()
     optimal_particles = optimal_particles.cpu().numpy()
-    H, x_edges, y_edges = np.histogram2d(optimal_particles[:,0], optimal_particles[:,1], density=True, range=[[-L, L], [-L, L]], bins=[20,20])
+    H, x_edges, y_edges = np.histogram2d(optimal_particles[:,0], optimal_particles[:,1], density=True, range=[[-L, L], [-L, L]], bins=[40,40])
     fig2d, ax2d = plt.subplots(figsize=(6, 5))
     im = ax2d.imshow(
         H.T,
