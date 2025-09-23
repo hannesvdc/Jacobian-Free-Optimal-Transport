@@ -67,11 +67,9 @@ def wasserstein_adam(
     X_param = pt.nn.Parameter(X0.clone()).to(device)
     N, d    = X_param.shape
 
-    print(f"[INFO] Initial Loss", w2_loss_2d(X_param, timestepper).item())
-
     lr_now = lr
-    opt = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
-    sched = pt.optim.lr_scheduler.StepLR(opt, step_size=lr_decrease_step, gamma=lr_decrease_factor)
+    adam = pt.optim.Adam([X_param], lr=lr, betas=(0.9, 0.999))
+    sched = pt.optim.lr_scheduler.StepLR(adam, step_size=lr_decrease_step, gamma=lr_decrease_factor)
     
     losses = []
     grad_norms = []
@@ -83,7 +81,7 @@ def wasserstein_adam(
             idx   = perm[start:start+batch_size]
             x_sub = X_param[idx]
             
-            opt.zero_grad()
+            adam.zero_grad()
             loss = w2_loss_2d(x_sub, timestepper)
             loss.backward()
             if X_param.grad is not None:
@@ -92,13 +90,13 @@ def wasserstein_adam(
                 print('Wasserstein gradient not available.')
                 grad_norm = float("nan")
 
-            opt.step()
+            adam.step()
             losses.append(loss.item())
             grad_norms.append(grad_norm)
         
         # Update the learning rate after each epoch
         sched.step()
-        lr_now = opt.param_groups[0]['lr']
+        lr_now = adam.param_groups[0]['lr']
 
         # Display convergence information
         with pt.no_grad():
