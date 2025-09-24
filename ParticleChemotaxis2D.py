@@ -177,5 +177,23 @@ def calculateSteadyStateWasserstein():
     plt.legend()
     plt.show()
 
+def plotHalfMoonPotential():
+    R = 2.0
+    A = 2.0
+    B = 0.5
+    alpha = 1.5
+    y_shift = -0.5
+    X = pt.linspace(-4, 4, 401)
+    Y = pt.linspace(-4, 4, 401)
+    Xm, Ym = pt.meshgrid(X, Y)
+    dist = pt.exp(-half_moon_potential_meshgrid(Xm, Ym, A, R, B, alpha, y_shift)).numpy()
+    Z = np.trapz(np.trapz(dist, X.numpy(), axis=0), Y.numpy())
+    
+    plt.pcolor(Xm.numpy(), Ym.numpy(), dist, cmap='viridis')
+    plt.colorbar()
+    plt.xlabel(r'$x$')
+    plt.ylabel(r'$y$')
+    plt.show()
+
 if __name__ == '__main__':
-    calculateSteadyStateWasserstein()
+    plotHalfMoonPotential()
