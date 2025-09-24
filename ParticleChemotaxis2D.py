@@ -173,8 +173,36 @@ def calculateSteadyStateWasserstein():
     ax2d.set_xlabel("x"); ax2d.set_ylabel("y")
     ax2d.set_title(f"Histogram heat map")
     plt.tight_layout()
+    plt.show()
 
+def plotOptimizationResults():
+    # Store the losses, gradnorms, and optimal particles
+    loss_data = np.load('./Results/2DWasserstein_losses.npy')
+    optimal_particles = np.load('./Results/2DWasserstein_particles.npy')
+    print(loss_data.shape)
+
+    # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
+    epochs = 300
+    batch_counter = np.linspace(0.0, epochs, loss_data.shape[1])
+    plt.semilogy(batch_counter, loss_data[0,:], label='Wasserstein Loss')
+    plt.semilogy(batch_counter, loss_data[1,:], label='Wasserstein Loss Gradient')
+    plt.xlabel('Epoch')
+    plt.grid(True)
     plt.legend()
+
+    L = 4.0
+    H, x_edges, y_edges = np.histogram2d(optimal_particles[:,0], optimal_particles[:,1], density=True, range=[[-L, L], [-L, L]], bins=[40,40])
+    fig2d, ax2d = plt.subplots(figsize=(6, 5))
+    im = ax2d.imshow(
+        H.T,
+        origin="lower",
+        cmap="viridis",
+        extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]], #type: ignore
+        aspect="auto",
+    )
+    fig2d.colorbar(im, ax=ax2d, label="density")
+    ax2d.set_xlabel("x"); ax2d.set_ylabel("y")
+    plt.tight_layout()
     plt.show()
 
 def plotHalfMoonPotential():
@@ -196,4 +224,4 @@ def plotHalfMoonPotential():
     plt.show()
 
 if __name__ == '__main__':
-    plotHalfMoonPotential()
+    plotOptimizationResults()
