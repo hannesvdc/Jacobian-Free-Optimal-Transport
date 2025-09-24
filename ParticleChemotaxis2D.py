@@ -135,15 +135,21 @@ def calculateSteadyStateWasserstein():
     
     # Do Wasserstein optimization
     batch_size = 1_000
-    lr = 1.e-1
+    lr = 1.e-2
     lr_decrease_factor = 0.1
     lr_decrease_step = 100
-    n_lrs = 5
+    n_lrs = 3
     epochs = n_lrs * lr_decrease_step
     optimal_particles, losses, grad_norms = wasserstein_adam(particles, particle_timestepper, epochs, batch_size, lr, lr_decrease_factor, lr_decrease_step, device)
+    optimal_particles = optimal_particles.cpu().numpy()
 
     # Clean up memory
     gc.collect()
+
+    # Store the losses, gradnorms, and optimal particles
+    loss_data = np.vstack((np.asarray(losses), np.asarray(grad_norms)))
+    np.save('./Results/2DWasserstein_losses.npy', loss_data)
+    np.save('./Results/2DWasserstein_particles.npy', optimal_particles)
 
     # Plot the loss as a function of the batch / epoch number as well as a histogram of the final particles
     batch_counter = pt.linspace(0.0, epochs, len(losses))
@@ -154,7 +160,6 @@ def calculateSteadyStateWasserstein():
     plt.grid(True)
     plt.legend()
 
-    optimal_particles = optimal_particles.cpu().numpy()
     H, x_edges, y_edges = np.histogram2d(optimal_particles[:,0], optimal_particles[:,1], density=True, range=[[-L, L], [-L, L]], bins=[40,40])
     fig2d, ax2d = plt.subplots(figsize=(6, 5))
     im = ax2d.imshow(
