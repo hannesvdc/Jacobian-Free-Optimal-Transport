@@ -135,10 +135,11 @@ def agentSteadyStateAdam():
     batch_size = N
     lr = 1.e-2
     lr_decrease_factor = 0.1
-    lr_decrease_step = 1000
-    n_lrs = 4
+    lr_decrease_step = 100
+    n_lrs = 3
     epochs = n_lrs * lr_decrease_step
     xf, losses, gradnorms = wopt.wasserstein_adam(x0, agent_timestepper, epochs, batch_size, lr, lr_decrease_factor, lr_decrease_step, pt.device('cpu'), store_directory=None)
+    avg_agents = np.average(xf.numpy())
 
     # Run the agents to a large time T to compare
     T = 100.0
@@ -156,20 +157,23 @@ def agentSteadyStateAdam():
     rho0 = np.exp(-x_centers**2 / (2.0 * sigma0**2)) / np.sqrt(2.0 * np.pi * sigma0**2)
     F = lambda rho: rho - pde.PDETimestepper(rho, x_faces, dt, Tpsi, gamma, vplus, vminus, eplus, eminus, g)
     rho_nk = opt.newton_krylov(F, rho0, maxiter=100)
+    avg_pde_pos = np.trapz(rho_nk * x_centers, x_centers)
 
     # Plot a histogram of the final particles
     print('Average particle location', np.mean(xf.numpy()))
-    plt.hist(xf.numpy(), bins=int(math.sqrt(N)), density=True, alpha=0.5, label='Optimized Agents')
-    plt.hist(x_evolution, bins=int(math.sqrt(N)), density=True, alpha=0.5, label='Time-Evolved Agents')
-    plt.plot(x_centers, rho_nk, label='PDE Solution')
-    plt.plot(x_centers, rho0, label='Initial Distribution')
-    plt.xlabel('Agents')
+    plt.hist(x0, bins=int(math.sqrt(N)), density=True, alpha=0.7, label='Initial Agents')
+    plt.hist(xf.numpy()+avg_pde_pos-avg_agents, bins=int(math.sqrt(N)), density=True, alpha=0.7, label='Optimized Agents')
+    #plt.hist(x_evolution, bins=int(math.sqrt(N)), density=True, alpha=0.7, label='Time-Evolved Agents')
+    plt.plot(x_centers, rho_nk, color='red', label='Analytic Steady State')
+    #plt.plot(x_centers, rho0, label='Initial Distribution')
+    plt.xlabel(r'$x$')
     plt.legend()
 
     epoch_counter = np.linspace(0, len(losses), len(losses))
     plt.figure()
-    plt.semilogy(epoch_counter, losses, label='Losses')
-    plt.semilogy(epoch_counter, gradnorms, label='Gradient Norms')
+    plt.semilogy(epoch_counter, losses, label='Wasserstein Loss')
+    plt.semilogy(epoch_counter, gradnorms, label='Wasserstein Loss Gradient')
+    plt.xlabel('Epoch')
     plt.legend()
     plt.show()
 
