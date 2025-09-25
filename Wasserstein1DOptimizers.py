@@ -162,7 +162,7 @@ def wasserstein_newton_krylov(
     tol = 1.e-14
     iterates.append(x0)
     try:
-        x_inf = opt.newton_krylov(F, x0, rdiff=rdiff, f_tol=tol, maxiter=maxiter, line_search=line_search, callback=callback, verbose=False)
+        x_inf = opt.newton_krylov(F, x0, rdiff=rdiff, f_tol=tol, maxiter=maxiter, line_search=line_search, callback=callback, verbose=True)
     except KeyboardInterrupt as e:
         x_inf = iterates[-1]
     except opt.NoConvergence as e:
