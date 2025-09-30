@@ -104,7 +104,8 @@ def timeEvolution():
     # Plot the ICDFs first
     plt.plot(percentile_grid, analytic_icdf, label='Analytic ICDF')
     plt.plot(percentile_grid, icdf, label="ICDF Timestepper")
-    plt.xlabel('percentiles')
+    plt.xlabel(r'$p$')
+    plt.ylabel('ICDF')
     plt.grid()
     plt.legend()
 
