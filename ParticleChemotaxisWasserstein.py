@@ -180,14 +180,14 @@ def calculateSteadyStateNewtonKrylov():
     # Define the Newton-Krylov objective function F(x). Input and output are numpy arrays!
     # First build the timestepper which takes in torch tensors!
     dt = 1.e-3
-    T_psi = 1.0
+    T_psi = 0.1
     device = pt.device('cpu')
     dtype = pt.float64
     def stepper(X : pt.Tensor, T : float = T_psi) -> pt.Tensor:
         return timestepper(X, S, dS, chi, D, dt, T, device=device, dtype=dtype)
     rdiff = 1.e-1 # the epsilon parameter
-    maxiter = 100
-    line_search = 'wolfe'
+    maxiter = 25
+    line_search = None
     x_inf, losses, grad_norms = wopt.wasserstein_newton_krylov(x0, stepper, maxiter, rdiff, line_search, device, dtype, store_directory=None)
 
     # Plot the steady-state and the analytic steady-state
