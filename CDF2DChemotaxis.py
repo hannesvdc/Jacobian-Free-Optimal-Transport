@@ -146,6 +146,8 @@ def timeEvolution():
     ax3d.view_init(elev=40, azim=-55)#type: ignore
     plt.tight_layout()
 
+    plotCDF(x_grid, y_grid, cdf0, N)
+
     plt.show()
 
 def calculateSteadyState():
@@ -217,9 +219,9 @@ def plotCDF(x_grid, y_grid, cdf, N):
         extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]], #type: ignore
         aspect="auto",
     )
-    fig2d.colorbar(im, ax=ax2d, label="density")
+    fig2d.colorbar(im, ax=ax2d)
     ax2d.set_xlabel("x"); ax2d.set_ylabel("y")
-    ax2d.set_title(f"Histogram heat map")
+    #ax2d.set_title(f"Histogram heat map")
     plt.tight_layout()
 
     # Plot a histogram of the sampled particles
