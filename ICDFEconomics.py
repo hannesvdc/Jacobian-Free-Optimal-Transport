@@ -70,7 +70,7 @@ def ICDFNewtonKrylov():
 
     # Find the steady-state CDF
     boundary = ((0.0, -1.0), (1.0, 1.0))
-    maxiter = 20
+    maxiter = 25
     rdiff = 1e-1
     icdf_inf, losses = icdfopt.icdf_newton_krylov(icdf0, percentile_grid, agent_timestepper, maxiter, rdiff, N, boundary)
 
@@ -99,21 +99,30 @@ def ICDFNewtonKrylov():
     icdf_inf = np.concatenate(([boundary[0][1]], icdf_inf, [boundary[1][1]]))
     percentile_grid = np.concatenate(([boundary[0][0]], percentile_grid, [boundary[1][0]]))
     plt.plot(percentile_grid, icdf0, label='Initial ICDF')
-    plt.plot(percentile_grid, icdf_nk, label='Exact Invariant ICDF')
-    plt.plot(percentile_grid, icdf_inf, label='Optimized ICDF')
+    plt.plot(percentile_grid, icdf_nk, label='Steady-State ICDF')
+    plt.plot(percentile_grid, icdf_inf, '--', label='ICDF by Newton-Krylov')
     plt.xlabel(r'$p$')
     plt.legend()
+    plt.tight_layout()
+    plt.savefig("./Paper/EconomicsICDF.png", dpi=300, transparent=True, bbox_inches='tight')
 
     plt.figure()
-    plt.hist(particles_from_icdf_inf, density=True, bins=100, label='Particles from Invariant ICDF')
-    plt.plot(x_centers, rho_nk, label='Invariant Density')
+    plt.hist(particles_from_icdf_inf, density=True, bins=100, label='Particles from Newton-Krylov ICDF')
+    plt.plot(x_centers-0.01, rho_nk, label='Mean-Field Density')
     plt.xlabel(r'$x$')
     plt.legend()
+    plt.tight_layout()
+    plt.savefig("./Paper/EconomicsICDFParticles.png", dpi=300, transparent=True, bbox_inches='tight')
  
     plt.figure()
-    plt.semilogy(np.arange(len(losses)), losses, label='NK Losses')
-    plt.xlabel('Newton-Krylov Iteration')
+    k = np.arange(3)
+    second_order = 1.0 * np.exp(-2.0 * k)
+    plt.semilogy(np.arange(len(losses)), losses, label='Newton-Krylov Residuals')
+    plt.semilogy(k, second_order, '--', color='tab:green', label='Second Order')
+    plt.xlabel('Iteration')
     plt.legend()
+    plt.tight_layout()
+    plt.savefig("./Paper/EconomicsICDFLosses.png", dpi=300, transparent=True, bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':

@@ -116,7 +116,8 @@ def calculateSteadyState():
     boundary = ((0.0, -L), (1.0, L))
     rdiff = 1e-1
     T_psi = 1.0
-    icdf_inf, losses = icdf_newton_krylov(icdf0, percentile_grid, lambda X : particleTimestepper(X, dt, T_psi, beta, rng), 100, rdiff, N, boundary)
+    maxiter = 25
+    icdf_inf, losses = icdf_newton_krylov(icdf0, percentile_grid, lambda X : particleTimestepper(X, dt, T_psi, beta, rng), maxiter, rdiff, N, boundary)
     samples_from_icdfinf = particles_from_icdf(percentile_grid, icdf_inf, N, boundary)
 
     # Build the analytic distribution and icdf
@@ -132,9 +133,9 @@ def calculateSteadyState():
     plot_icdf_inf = np.concatenate(([-L], icdf_inf, [L]))
 
     # Plot the ICDFs first
-    plt.plot(plot_percentile_grid, plot_analytic_icdf, label='Analytic ICDF')
+    plt.plot(plot_percentile_grid, plot_analytic_icdf, linestyle='dashdot', label='Analytic ICDF')
     plt.plot(percentile_grid, icdf0, label='Initial ICDF')
-    plt.plot(plot_percentile_grid, plot_icdf_inf+0.01, '--', label="ICDF by Newton-Krylov")
+    plt.plot(plot_percentile_grid, plot_icdf_inf+0.02, '--', label="ICDF by Newton-Krylov")
     plt.xlabel(r'$p$')
     plt.ylabel('ICDF')
     plt.legend()
@@ -147,7 +148,7 @@ def calculateSteadyState():
 
     # Plot the losses
     plt.figure()
-    plt.semilogy(np.arange(len(losses)), losses)
+    plt.semilogy(np.arange(len(losses)), losses, label=r'$\Psi\left((F^{-1})^{(k)}\right)$')
     plt.ylabel('Loss')
     plt.xlabel('Iteration')
     plt.show()
