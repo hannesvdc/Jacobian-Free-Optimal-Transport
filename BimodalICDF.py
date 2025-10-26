@@ -133,25 +133,27 @@ def calculateSteadyState():
     plot_icdf_inf = np.concatenate(([-L], icdf_inf, [L]))
 
     # Plot the ICDFs first
-    plt.plot(plot_percentile_grid, plot_analytic_icdf, linestyle='dashdot', label='Analytic ICDF')
     plt.plot(percentile_grid, icdf0, label='Initial ICDF')
+    plt.plot(plot_percentile_grid, plot_analytic_icdf, label='Analytic ICDF')
     plt.plot(plot_percentile_grid, plot_icdf_inf+0.02, '--', label="ICDF by Newton-Krylov")
     plt.xlabel(r'$p$')
     plt.ylabel('ICDF')
     plt.legend()
+    plt.savefig("./Paper/BimodalICDF.png", dpi=300, transparent=True, bbox_inches='tight')
 
     plt.figure()
     plt.hist(samples_from_icdfinf, density=True, bins=int(math.sqrt(N)), label='Particles from Evolved ICDF')
     plt.plot(x_grid, analytic_dist, label='Analytic Steady-State Density')
     plt.xlabel(r"$x$")
     plt.legend()
+    plt.savefig("./Paper/ParticlesBimodalICDF.png", dpi=300, transparent=True, bbox_inches='tight')
 
     # Plot the losses
     plt.figure()
     plt.semilogy(np.arange(len(losses)), losses, label=r'$\Psi\left((F^{-1})^{(k)}\right)$')
     plt.ylabel('Loss')
     plt.xlabel('Iteration')
-    plt.show()
+    plt.savefig("./Paper/BimodalICDFLosses.png", dpi=300, transparent=True, bbox_inches='tight')
     plt.show()
 
 def parseArguments():

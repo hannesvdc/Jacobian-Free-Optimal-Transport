@@ -126,13 +126,15 @@ def calculateSteadyState():
     D = 0.1
 
     # Initial density: use a truncated Gaussian for now
-    N = 10**6
-    n_points = 100
+    N = 10**5
+    n_points = 1000
     percentile_grid = (np.arange(n_points) + 0.5) / n_points
     mean = 5.0
     stdev = 2.0
     particles = rng.normal(mean, stdev, N)
+    particles[particles > L] = mean
     icdf0 = icdf_on_percentile_grid(particles, percentile_grid)
+    #icdf0 = np.sort(particles)[::100]
 
     # Build a wrapper around the particle time stepper
     dt = 1.e-3
@@ -141,8 +143,8 @@ def calculateSteadyState():
 
     # Newton-Krylov optimzer with parameters. All parameter values were tested using time evolution
     boundary = ((0.0, -L), (1.0, L))
-    maxiter = 20
-    rdiff = 10**(-1)
+    maxiter = 100
+    rdiff = 1e-1
     icdf_inf, losses = icdf_newton_krylov(icdf0, percentile_grid, timestepper, maxiter, rdiff, N, boundary)
     samples_from_icdf = particles_from_icdf(percentile_grid, icdf_inf, N, boundary)
     print(samples_from_icdf)
@@ -169,25 +171,27 @@ def calculateSteadyState():
     percentile_grid = np.concatenate(([0.0], percentile_grid, [1.0]))
     plt.plot(percentile_grid, icdf0, label='Initial ICDF')
     plt.plot(percentile_grid, analytic_icdf, label='Analytic ICDF')
-    plt.plot(percentile_grid, icdf_inf, label="ICDF Timestepper")
+    plt.plot(percentile_grid, icdf_inf-0.02, '--', label="Newton-Krylov ICDF")
     #plt.plot(spline_grid, spline_values, label='Spline Interpolation of ICDF')
     plt.xlabel('percentiles')
-    plt.grid()
+    #plt.grid()
+    plt.savefig("./Paper/ChemotaxisICDF.png", dpi=300, transparent=True, bbox_inches='tight')
     plt.legend()
 
     # Also plot the particles
     plt.figure()
-    plt.hist(samples_from_analytic_icdf, density=True, bins=int(math.sqrt(N)), label='Particles from ICDF Timestepper')
-    plt.plot(grid, analytic_dist, label='Analytic Steady-State Distribution')
+    plt.hist(samples_from_analytic_icdf, density=True, bins=int(math.sqrt(N)), label='Particles from Newton-Krylov ICDF')
+    plt.plot(grid, analytic_dist, label='Analytic Steady-State Density')
     plt.legend()
-    plt.grid()
+    plt.savefig("./Paper/ParticlesChemotaxisICDF.png", dpi=300, transparent=True, bbox_inches='tight')
+    #plt.grid()
 
     # Plot the losses
     plt.figure()
     plt.semilogy(np.arange(len(losses)), losses)
     plt.ylabel('Loss')
     plt.xlabel('Iteration')
-    plt.title('Newton-Krylov Loss')
+    plt.savefig("./Paper/ChemotaxisICDFLosses.png", dpi=300, transparent=True, bbox_inches='tight')
     plt.show()
 
 def testICDFSampling():
