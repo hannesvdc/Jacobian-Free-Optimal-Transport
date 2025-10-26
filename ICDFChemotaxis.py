@@ -134,7 +134,6 @@ def calculateSteadyState():
     particles = rng.normal(mean, stdev, N)
     particles[particles > L] = mean
     icdf0 = icdf_on_percentile_grid(particles, percentile_grid)
-    #icdf0 = np.sort(particles)[::100]
 
     # Build a wrapper around the particle time stepper
     dt = 1.e-3
@@ -161,10 +160,6 @@ def calculateSteadyState():
     samples_from_analytic_icdf = particles_from_icdf(percentile_grid, analytic_icdf, N, boundary)
     analytic_icdf = np.concatenate(([-L], analytic_icdf, [L]))
 
-    spline = PchipInterpolator(np.concatenate(([0.0], percentile_grid, [1.0])), np.concatenate(([-L], icdf_inf, [L])), extrapolate=False)
-    spline_grid = np.linspace(-L, L, 10001)
-    spline_values = spline(spline_grid)
-
     # Plot the ICDFs first
     icdf0 = np.concatenate(([-L], icdf0, [L]))
     icdf_inf = np.concatenate(([-L], icdf_inf, [L]))
@@ -172,9 +167,7 @@ def calculateSteadyState():
     plt.plot(percentile_grid, icdf0, label='Initial ICDF')
     plt.plot(percentile_grid, analytic_icdf, label='Analytic ICDF')
     plt.plot(percentile_grid, icdf_inf-0.02, '--', label="Newton-Krylov ICDF")
-    #plt.plot(spline_grid, spline_values, label='Spline Interpolation of ICDF')
     plt.xlabel('percentiles')
-    #plt.grid()
     plt.savefig("./Paper/ChemotaxisICDF.png", dpi=300, transparent=True, bbox_inches='tight')
     plt.legend()
 
@@ -184,7 +177,6 @@ def calculateSteadyState():
     plt.plot(grid, analytic_dist, label='Analytic Steady-State Density')
     plt.legend()
     plt.savefig("./Paper/ParticlesChemotaxisICDF.png", dpi=300, transparent=True, bbox_inches='tight')
-    #plt.grid()
 
     # Plot the losses
     plt.figure()
