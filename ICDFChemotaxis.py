@@ -166,7 +166,7 @@ def calculateSteadyState():
     percentile_grid = np.concatenate(([0.0], percentile_grid, [1.0]))
     plt.plot(percentile_grid, icdf0, label='Initial ICDF')
     plt.plot(percentile_grid, analytic_icdf, label='Analytic ICDF')
-    plt.plot(percentile_grid, icdf_inf-0.02, '--', label="Newton-Krylov ICDF")
+    plt.plot(percentile_grid, icdf_inf, '--', label="Newton-Krylov ICDF")
     plt.xlabel('percentiles')
     plt.savefig("./Paper/ChemotaxisICDF.png", dpi=300, transparent=True, bbox_inches='tight')
     plt.legend()
