@@ -133,9 +133,9 @@ def calculateSteadyState():
     plot_icdf_inf = np.concatenate(([-L], icdf_inf, [L]))
 
     # Plot the ICDFs first
-    plt.plot(percentile_grid, icdf0, label='Initial ICDF')
-    plt.plot(plot_percentile_grid, plot_analytic_icdf, label='Analytic ICDF')
     plt.plot(plot_percentile_grid, plot_icdf_inf+0.02, '--', label="ICDF by Newton-Krylov")
+    plt.plot(plot_percentile_grid, plot_analytic_icdf, label='Analytic ICDF')
+    plt.plot(percentile_grid, icdf0, label='Initial ICDF')
     plt.xlabel(r'$p$')
     plt.ylabel('ICDF')
     plt.legend()
