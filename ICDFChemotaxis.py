@@ -127,7 +127,7 @@ def calculateSteadyState():
 
     # Initial density: use a truncated Gaussian for now
     N = 10**5
-    n_points = 1000
+    n_points = 100
     percentile_grid = (np.arange(n_points) + 0.5) / n_points
     mean = 5.0
     stdev = 2.0
@@ -149,8 +149,8 @@ def calculateSteadyState():
     print(samples_from_icdf)
 
     # Plot the initial and final density, as well as the true steady-state distribution
-    dx = 2.0 * L / 1000
-    grid = np.linspace(-L, L, 1001)
+    dx = 2.0 * L / n_points
+    grid = np.linspace(-L, L, n_points+1)
     analytic_dist = np.exp( (S(grid) + S(grid)**3 / 6.0) / D)
     Z_dist = np.trapz(analytic_dist, grid)
     analytic_dist /= Z_dist
@@ -164,12 +164,12 @@ def calculateSteadyState():
     icdf0 = np.concatenate(([-L], icdf0, [L]))
     icdf_inf = np.concatenate(([-L], icdf_inf, [L]))
     percentile_grid = np.concatenate(([0.0], percentile_grid, [1.0]))
-    plt.plot(percentile_grid, icdf0, label='Initial ICDF')
-    plt.plot(percentile_grid, analytic_icdf, label='Analytic ICDF')
     plt.plot(percentile_grid, icdf_inf, '--', label="Newton-Krylov ICDF")
+    plt.plot(percentile_grid, analytic_icdf, label='Analytic ICDF')
+    plt.plot(percentile_grid, icdf0, label='Initial ICDF')
     plt.xlabel('percentiles')
     plt.savefig("./Paper/ChemotaxisICDF.png", dpi=300, transparent=True, bbox_inches='tight')
-    plt.legend()
+#    plt.legend()
 
     # Also plot the particles
     plt.figure()
