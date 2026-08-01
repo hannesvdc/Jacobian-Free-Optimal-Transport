@@ -173,3 +173,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Sweep / experiment output (keep local, don't commit)
+Results/slurm/*.npy
+Results/sweep*/
+*.npy
+!Results/2DWasserstein_particles.npy
